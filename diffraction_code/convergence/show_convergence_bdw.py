@@ -15,7 +15,7 @@ import h5py
 import matplotlib.pyplot as plt
 
 #Load data
-with h5py.File('./xtras/convergence_results.h5', 'r') as f:
+with h5py.File('./convergence_results.h5', 'r') as f:
     emaps = f['emaps'][()]
     pts = f['num_occ_pts'][()]
 

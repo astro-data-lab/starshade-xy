@@ -21,7 +21,11 @@ import os
 import time
 import multiprocessing
 import itertools
-from scipy.ndimage import affine_transform
+try:
+    from scipy.ndimage import affine_transform
+    has_scipy = True
+except ImportError:
+    has_scipy = False
 
 class BDW(object):
 
@@ -33,11 +37,11 @@ class BDW(object):
 
     @property
     def tel_pts_x(self):
-        return self.tel_pts + self.shift[0]
+        return self.tel_pts + self.tel_shift[0]
 
     @property
     def tel_pts_y(self):
-        return self.tel_pts + self.shift[1]
+        return self.tel_pts + self.tel_shift[1]
 
 ############################################
 ####    Initialization ####
@@ -48,14 +52,14 @@ class BDW(object):
         def_pms = {
             ### Lab ###
             'wave':             0.405e-6,       #Wavelength of light [m]
-            'z0':               27.5,           #Source - starshade distance [m]
+            'z0':               27.455,         #Source - starshade distance [m]
             'z1':               50.,            #Starshade - telescope distance [m]
             ### Telescope ###
             'tel_diameter':     5e-3,           #Telescope aperture diameter [m]
             'num_tel_pts':      256,            #Size of grid to calculate over pupil
             'image_pad':        10,             #Padding in pupil image outside of aperture
-            'shift':            [0,0],          #(x,y) shift of telescope relative to starshade-source line [m]
-            'with_spiders':     False,          #Superimpose spiders on pupil image?
+            'tel_shift':        [0,0],          #(x,y) shift of telescope relative to starshade-source line [m]
+            'with_spiders':     False,          #Superimpose secondary mirror spiders on pupil image?
             ### Starshade ###
             'apod_name':        'lab_ss',       #Apodization profile name. Options: ['lab_ss', 'circle']
             'num_petals':       12,             #Number of starshade petals
@@ -79,6 +83,7 @@ class BDW(object):
                 print(f'\nError: Invalid Parameter Name: {k}\n')
                 import sys; sys.exit(0)
 
+            #Set parameter value as attribute
             setattr(self, k, v)
 
         #Create save directory
@@ -107,6 +112,10 @@ class BDW(object):
 
         #Load pupil mask
         self.load_pupil_mask()
+
+        #Get indices for pupil x,y values
+        self.pupil_inds = [(i,j) for i,j in \
+            itertools.product(range(self.num_pts), range(self.num_pts))]
 
         ### Pre - Calculations ###
 
@@ -210,7 +219,7 @@ class BDW(object):
 
     def load_pupil_mask(self):
         #Load Roman Space Telescope pupil
-        if self.with_spiders:
+        if self.with_spiders and has_scipy:
             #Load Pupil Mask
             with h5py.File(f'{self.xtras_dir}/pupil_mask.h5', 'r') as f:
                 full_mask = f['mask'][()]
@@ -247,7 +256,6 @@ class BDW(object):
 ############################################
 
     def run_sim(self):
-
         #Start
         start = time.perf_counter()
         if self.verbose:
@@ -273,25 +281,20 @@ class BDW(object):
 ############################################
 
     def calculate_diffraction(self):
-        #Get indices for x,y values
-        inds = [(i,j) for i,j in itertools.product(range(self.num_pts), range(self.num_pts))]
-
-        #Run in parallel
+        #Run in parallel or serially
         if self.allow_parallel:
-
-            #Get processor/chunk size
+            #Get processors/chunk size
             procs = multiprocessing.cpu_count()
-            chunksize = 2**8
+            chunksize = self.num_pts**2//procs
 
-            #Run in pool
+            #Run asynchronously in pool
             with multiprocessing.Pool(processes=procs) as pool:
-                Emap = np.array(pool.map(self.calc_electric_field, inds, \
-                    chunksize)).reshape((self.num_pts, self.num_pts))
+                Emap = np.array(pool.map_async(self.calc_electric_field, self.pupil_inds, \
+                    chunksize).get()).reshape((self.num_pts, self.num_pts))
 
         else:
-
             #Run serially
-            Emap = np.fromiter(map(self.calc_electric_field, inds), \
+            Emap = np.fromiter(map(self.calc_electric_field, self.pupil_inds), \
                 dtype=np.complex).reshape((self.num_pts, self.num_pts))
 
         #Add constants in front of integral
@@ -368,16 +371,13 @@ if __name__ == '__main__':
     params = {
             'num_tel_pts':      64,
             'num_occ_pts':      1000,
-            # 'apod_name':        'lab_ss',
-            'apod_name':        'circle',
+            'image_pad':        0,
+            'apod_name':        'lab_ss',
+            # 'apod_name':        'circle',
             'save_dir_base':    './Results',
             'do_save':          False,
-            'with_spiders':     True,
+            'with_spiders':     False,
     }
 
     bdw = BDW(params)
     emap = bdw.run_sim()
-
-    import matplotlib.pyplot as plt;plt.ion()
-    plt.imshow(np.abs(emap))
-    breakpoint()

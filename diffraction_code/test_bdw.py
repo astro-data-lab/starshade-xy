@@ -1,10 +1,24 @@
+"""
+test_bdw.py
+
+Author: Anthony Harness
+Affiliation: Princeton University
+Created on: 02-26-2021
+
+Description: Run tests of BDW by comparing simulated results of a circular occulter
+    to the anlytic solution and simulated results of the laboratory starshade
+    to results pre-generated from a different package.
+
+"""
+
 import numpy as np
 from bdw import BDW
 from scipy.special import jn
+import h5py
 
 class Test_BDW(object):
 
-    def test_bdw(self):
+    def test_circle(self):
         #Intensity tolerance
         itol = 1e-6
 
@@ -37,7 +51,7 @@ class Test_BDW(object):
         for shift in [[0,0], [-3e-3, 0], [0,2e-3], [2e-3, -1.25e-3]]:
 
             #Set BDW's shift
-            bdw.shift = shift
+            bdw.tel_shift = shift
 
             #Run BDW simulation
             bsol = bdw.run_sim()
@@ -48,6 +62,41 @@ class Test_BDW(object):
 
             #Verify correct
             assert(np.abs(asol - bsol).max()**2 < itol)
+
+    def test_starshade(self):
+        #Tolerance (amplitude)
+        tol = 1e-5
+
+        #Load test data
+        pms, imgs = {}, {}
+        with h5py.File('./xtras/test_data__lab_ss.h5', 'r') as f:
+            #Get parameters
+            for k in f.keys():
+                #Save images separately
+                if k.startswith('pupil'):
+                    imgs[k] = f[k][()]
+                else:
+                    pms[k]= f[k][()]
+
+        #Add extra pms
+        pms['do_save'] = False
+        pms['verbose'] = False
+        pms['image_pad'] = 0
+        waves = pms.pop('waves')
+
+        #Loop over wavelengths and run sim
+        for wave in waves:
+
+            #Run Sim
+            pms['wave'] = wave
+            bdw = BDW(pms)
+            emap = bdw.run_sim()
+
+            #Compare to data
+            cmap = imgs[f'pupil_{wave*1e9:.0f}']
+
+            #Assert true
+            assert(np.abs(emap - cmap).max() < tol)
 
 ############################################
 ##### Circle Analytical Functions #####
@@ -145,4 +194,4 @@ def lommels_U(u,v,nt=10):
 if __name__ == '__main__':
 
     tt = Test_BDW()
-    tt.test_bdw()
+    tt.test_starshade()

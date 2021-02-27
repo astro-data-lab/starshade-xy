@@ -47,6 +47,6 @@ for p in pts:
     print(f'Time: {time.perf_counter()-tik:.2f} [s]')
 
 #Save data
-with h5py.File('./xtras/convergence_results.h5', 'w') as f:
+with h5py.File('./convergence_results.h5', 'w') as f:
     f.create_dataset('emaps', data=emaps)
     f.create_dataset('num_occ_pts', data=np.array(pts))

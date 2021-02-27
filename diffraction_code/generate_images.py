@@ -18,7 +18,7 @@ from bdw import BDW
 save_name = 'stepped_data'
 
 #Width of motion grid [m]
-width = 1e-3
+width = 2.5e-3
 
 #Spacing between position steps [m]
 dstep = 0.25e-3
@@ -60,8 +60,8 @@ for x in steps:
         #Set shift of telescope
         bdw.tel_shift = [x, y]
 
-        #Get image
-        img = bdw.calculate_diffraction()
+        #Get diffraction and convert to intensity
+        img = np.abs(bdw.calculate_diffraction())**2
 
         #Store
         images = np.concatenate((images, [img]))

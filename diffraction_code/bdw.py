@@ -10,7 +10,7 @@ Description: BDW uses the Boundary Diffraction Wave (BDW) algorithm of
     of an opaque occulter with a radial apodization profile. The apodization profile
     is specified by the parameter 'apod_name'. The input to the class is a dictionary
     of parameters (with defaults specified in BDW.set_parameters). The simulation
-    is run with BDW.run_sim(). Saves: electric field at the pupil, x/y coordinates.
+    is run with BDW.run_sim(). Saves: complex electric field at the pupil, x/y coordinates.
     WARNING: this version only works in the geometric shadow of a closed occulter shape.
 
 """

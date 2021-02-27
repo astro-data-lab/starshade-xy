@@ -40,7 +40,9 @@ default parameters are stored in `BDW`. An quick example for running a simulatio
     #Run simulation
     bdw.run_sim()
 
-To generate a new image at a different location, the telescope's position can be changed with `BDW.tel_shift` and a new image calculate through `img = BDW.calculate_diffraction()`. An example in quickly generating images is shown in `generage_images.py`. `BDW` uses minimal dependencies of `numpy` and `h5py` to save data; `scipy` is only used for the image of the secondary spiders.
+To generate a new image at a different location, the telescope's position can be changed with `BDW.tel_shift` and a new diffraction pattern is calculated through `emap = BDW.calculate_diffraction()`. This function returns the complex electric field, an image is given by the intensity of the field `img = abs(emap)**2`.
+
+An example in quickly generating images is shown in `generage_images.py`. `BDW` uses minimal dependencies of `numpy` and `h5py` to save data; `scipy` is only used for the image of the secondary spiders.
 
 Dependencies
 --------------------

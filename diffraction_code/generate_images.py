@@ -30,7 +30,7 @@ params = {
 
     ### Telescope ###
     'tel_diameter':     5e-3,           #Telescope aperture diameter [m]
-    'num_tel_pts':      64,             #Size of grid to calculate over pupil
+    'num_tel_pts':      54,             #Size of grid to calculate over pupil
     'with_spiders':     True,           #Superimpose spiders on pupil image?
 
     ### Starshade ###

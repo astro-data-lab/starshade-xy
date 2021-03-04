@@ -74,6 +74,7 @@ class BDW(object):
             ### Misc ###
             'xtras_dir':        './xtras',      #Location of extras (apodization function, pupil mask)
             'allow_parallel':   True,           #Allow to be run in parallel?
+            'num_procs':        -1,             #Number of processors to utilitze. -1 uses all available
         }
 
         #Set user and default parameters
@@ -282,9 +283,12 @@ class BDW(object):
 
     def calculate_diffraction(self):
         #Run in parallel or serially
-        if self.allow_parallel:
+        if self.allow_parallel and self.num_procs != 1:
             #Get processors/chunk size
-            procs = multiprocessing.cpu_count()
+            if self.num_procs == -1:
+                procs = multiprocessing.cpu_count()
+            else:
+                procs = self.num_procs
             chunksize = self.num_pts**2//procs
 
             #Run asynchronously in pool
@@ -327,7 +331,7 @@ class BDW(object):
         inc = inc_top / inc_bot
 
         #Calculate integral with dot product
-        ans = np.dot(exp, inc)
+        ans = np.sum(exp * inc)
 
         return ans
 

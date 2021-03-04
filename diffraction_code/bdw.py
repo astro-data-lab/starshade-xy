@@ -211,6 +211,9 @@ class BDW(object):
             #If petals are connected, join together and calculate midpoint scheme for all
             occ_pts = occ_pts.reshape((-1, 2))
 
+            #Flip direction if connected
+            occ_pts = occ_pts[::-1]
+
             #Get midpoint scheme
             loci, dls = self.get_midpoint_scheme(occ_pts)
 

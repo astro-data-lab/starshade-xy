@@ -194,4 +194,4 @@ def lommels_U(u,v,nt=10):
 if __name__ == '__main__':
 
     tt = Test_BDW()
-    tt.test_starshade()
+    tt.test_circle()

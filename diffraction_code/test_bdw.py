@@ -18,6 +18,10 @@ import h5py
 
 class Test_BDW(object):
 
+    def run_all_tests(self):
+        for tt in ['circle', 'starshade']:
+            getattr(self, f'test_{tt}')()
+
     def test_circle(self):
         #Intensity tolerance
         itol = 1e-6
@@ -48,55 +52,64 @@ class Test_BDW(object):
         bdw = BDW(params)
 
         #Loop over shifts
-        for shift in [[0,0], [-3e-3, 0], [0,2e-3], [2e-3, -1.25e-3]]:
+        for shift in [[0,0], [-3e-3, 0], [2e-3, -1.5e-3]]:
 
-            #Set BDW's shift
-            bdw.tel_shift = shift
+            #Loop over illumination
+            for is_illum in [False, True]:
 
-            #Run BDW simulation
-            bsol = bdw.run_sim()
+                #Set babinet flag
+                bdw.is_illuminated = is_illum
 
-            #Get analytic solution
-            ss = np.hypot(bdw.tel_pts_x, bdw.tel_pts_y[:,None])
-            asol = calculate_circle_solution(ss, wave, z1, z0, circle_rad, True)
+                #Set BDW's shift
+                bdw.tel_shift = shift
 
-            #Verify correct
-            assert(np.abs(asol - bsol).max()**2 < itol)
+                #Run BDW simulation
+                bsol = bdw.run_sim()
+
+                #Get analytic solution
+                ss = np.hypot(bdw.tel_pts_x, bdw.tel_pts_y[:,None])
+                asol = calculate_circle_solution(ss, wave, z1, z0, circle_rad, not is_illum)
+
+                #Verify correct
+                assert(np.abs(asol - bsol).max()**2 < itol)
 
     def test_starshade(self):
         #Tolerance (amplitude)
         tol = 1e-5
 
-        #Load test data
-        pms, imgs = {}, {}
-        with h5py.File('./xtras/test_data__lab_ss.h5', 'r') as f:
-            #Get parameters
-            for k in f.keys():
-                #Save images separately
-                if k.startswith('pupil'):
-                    imgs[k] = f[k][()]
-                else:
-                    pms[k]= f[k][()]
+        #Loop over apodizatoin functions
+        for apod_name in ['lab_ss', 'wfirst']:
 
-        #Add extra pms
-        pms['do_save'] = False
-        pms['verbose'] = False
-        pms['image_pad'] = 0
-        waves = pms.pop('waves')
+            #Load test data
+            pms, imgs = {}, {}
+            with h5py.File(f'./xtras/test_data__{apod_name}.h5', 'r') as f:
+                #Get parameters
+                for k in f.keys():
+                    #Save images separately
+                    if k.startswith('pupil'):
+                        imgs[k] = f[k][()]
+                    else:
+                        pms[k]= f[k][()]
 
-        #Loop over wavelengths and run sim
-        for wave in waves:
+            #Add extra pms
+            pms['do_save'] = False
+            pms['verbose'] = False
+            pms['image_pad'] = 0
+            waves = pms.pop('waves')
 
-            #Run Sim
-            pms['wave'] = wave
-            bdw = BDW(pms)
-            emap = bdw.run_sim()
+            #Loop over wavelengths and run sim
+            for wave in waves:
 
-            #Compare to data
-            cmap = imgs[f'pupil_{wave*1e9:.0f}']
+                #Run Sim
+                pms['wave'] = wave
+                bdw = BDW(pms)
+                emap = bdw.run_sim()
 
-            #Assert true
-            assert(np.abs(emap - cmap).max() < tol)
+                #Compare to data
+                cmap = imgs[f'pupil_{wave*1e9:.0f}']
+
+                #Assert true
+                assert(np.abs(emap - cmap).max() < tol)
 
 ############################################
 ##### Circle Analytical Functions #####
@@ -194,4 +207,4 @@ def lommels_U(u,v,nt=10):
 if __name__ == '__main__':
 
     tt = Test_BDW()
-    tt.test_circle()
+    tt.run_all_tests()

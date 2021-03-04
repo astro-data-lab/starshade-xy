@@ -201,7 +201,7 @@ class BDW(object):
 
     def get_midpoint_scheme(self, loci):
         #Rollover 1 point
-        locr = np.concatenate((loci[1:], loci[:1]))
+        locr = np.concatenate((loci[:1], loci[1:]))
 
         #Get midpoint values
         mid_pt = (loci + locr)/2.
@@ -374,7 +374,7 @@ if __name__ == '__main__':
 
     params = {
             'num_tel_pts':      64,
-            'num_occ_pts':      1000,
+            'num_occ_pts':      4000,
             'image_pad':        0,
             'apod_name':        'lab_ss',
             # 'apod_name':        'circle',

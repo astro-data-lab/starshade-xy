@@ -21,7 +21,7 @@ save_name = 'stepped_data'
 width = 2.5e-3
 
 #Spacing between position steps [m]
-dstep = width / 2
+dstep = width / 32
 
 #Radius of random perturbations [m]
 rad = np.sqrt(2) / 2 * dstep
@@ -58,7 +58,7 @@ positions = np.empty((0, 2))
 #Loop over steps in each axis and calculate image
 i = 1
 for x in steps:
-    print(f'Running x step # {i // len(steps)}')
+    print(f'Running x step # {i // len(steps) + 1}')
     for y in steps:
 
         #Set shift of telescope
@@ -69,7 +69,7 @@ for x in steps:
         #Get diffraction and convert to intensity
         img = np.abs(bdw.calculate_diffraction())**2
 
-        plt.imsave(f'train/{i}', img, format='png')
-        with open('train.csv', 'a') as f:
+        plt.imsave(f'test/{i}', img, format='png')
+        with open('test.csv', 'a') as f:
             f.write(f'{i}, {x}, {y}\n')
         i += 1

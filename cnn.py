@@ -8,8 +8,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
+
 lr = 1e-3
 num_epochs = 10
+img_size = 74
 
 
 class StarshadeDataset(Dataset):
@@ -40,9 +42,9 @@ class StarshadeDataset(Dataset):
 class CNN(nn.Module):
     def __init__():
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(3, 8, 3, 1)
-        self.conv2 = nn.Conv2d(8, 16, 3, 1)
-        self.fc1 = nn.Linear(10000, 128)
+        self.conv1 = nn.Conv2d(1, 4, 3, 1)
+        self.conv2 = nn.Conv2d(4, 8, 3, 1)
+        self.fc1 = nn.Linear((img_size // 4) * (img_size // 4) * 8, 128)
         self.fc2 = nn.Linear(128, 2)
         
     def forward(self, X):
@@ -81,6 +83,7 @@ def test(model, testloader):
     
     test_loss /= len(testloader.dataset)
     print(f'\nTest Set: Average Loss {test_loss}\n')
+
 
 def main():
 

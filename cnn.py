@@ -1,17 +1,18 @@
-import io
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+from PIL import Image
 import torch
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 
 
 lr = 1e-3
 num_epochs = 10
-img_size = 74
 
 
 class StarshadeDataset(Dataset):
@@ -27,29 +28,30 @@ class StarshadeDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_path = os.path.join(self.root_dir, self.shifts.iloc[idx, 0])
-        image = io.imread(img_path)
+        img_path = os.path.join(self.root_dir, str(self.shifts.iloc[idx, 0]))
+        image = np.asarray(Image.open(img_path).convert('L'))
         xy = self.shifts.iloc[idx, 1:]
-        xy = np.array([xy])
-        sample = {'image': image, 'xy': xy}
+        xy = np.array(xy, dtype=np.float32)
+        xy *= 1000
 
         if self.transform:
-            sample = self.transform(sample)
+            image = self.transform(image)
 
+        sample = {'image': image, 'xy': xy}
         return sample
 
 
 class CNN(nn.Module):
-    def __init__():
+    def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 4, 3, 1)
-        self.conv2 = nn.Conv2d(4, 8, 3, 1)
-        self.fc1 = nn.Linear((img_size // 4) * (img_size // 4) * 8, 128)
+        self.conv1 = nn.Conv2d(1, 8, 3, 1)
+        self.conv2 = nn.Conv2d(8, 16, 3, 1)
+        self.fc1 = nn.Linear(4624, 128)
         self.fc2 = nn.Linear(128, 2)
         
     def forward(self, X):
         X = self.conv1(X)
-        X = F.maX_pool2d(X, 2)
+        X = F.max_pool2d(X, 2)
         X = F.relu(X)
         X = self.conv2(X)
         X = F.max_pool2d(X, 2)
@@ -63,23 +65,23 @@ class CNN(nn.Module):
 
 def train(model, trainloader, optimizer, epoch):
     model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
+    for batch_idx, batch in enumerate(trainloader):
         optimizer.zero_grad()
-        output = model(data)
-        loss = F.mse_loss(output, target)
+        output = model(batch['image'])
+        loss = F.mse_loss(output, batch['xy'])
         loss.backward()
         optimizer.step()
         if batch_idx % 25 == 0:
-            print(f'Train Epoch: {epoch} [{batch_idx*len(data)}/{len(trainloader.dataset)}]\tLoss: {loss.item()}')
+            print(f'Train Epoch: {epoch} [{batch_idx*len(batch["xy"])}/{len(trainloader.dataset)}]\tLoss: {loss.item()}')
     
 
 def test(model, testloader):
     model.eval()
     test_loss = 0
     with torch.no_grad():
-        for data, target in test_loader:
-            output = model(data)
-            test_loss += F.mse_loss(output, target).item()
+        for batch in testloader:
+            output = model(batch['image'])
+            test_loss += F.mse_loss(output, batch['xy']).item()
     
     test_loss /= len(testloader.dataset)
     print(f'\nTest Set: Average Loss {test_loss}\n')
@@ -87,10 +89,10 @@ def test(model, testloader):
 
 def main():
 
-    trainset = StarshadeDataset('train.csv', './data/train')
+    trainset = StarshadeDataset('./data/train.csv', './data/train', transform=transforms.ToTensor())
     trainloader = DataLoader(trainset, batch_size=4, shuffle=True)
 
-    testset = StarshadeDataset('test.csv', './data/test')
+    testset = StarshadeDataset('./data/test.csv', './data/test', transform=transforms.ToTensor())
     testloader = DataLoader(testset, batch_size=4, shuffle=False)
 
     model = CNN()

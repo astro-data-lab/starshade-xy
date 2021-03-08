@@ -5,6 +5,7 @@ import pandas as pd
 from PIL import Image
 import torch
 import torch.optim as optim
+from torch.optim.lr_scheduler import StepLR
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
@@ -12,7 +13,8 @@ from torchvision import transforms
 
 
 lr = 1e-3
-num_epochs = 10
+num_epochs = 30
+gamma = 0.8
 
 
 class StarshadeDataset(Dataset):
@@ -96,11 +98,13 @@ def main():
     testloader = DataLoader(testset, batch_size=4, shuffle=False)
 
     model = CNN()
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-2)
 
+    scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
     for epoch in range(num_epochs):
         train(model, trainloader, optimizer, epoch)
         test(model, testloader)
+        scheduler.step()
 
     torch.save(model.state_dict(), "starshade_cnn.pt")
 

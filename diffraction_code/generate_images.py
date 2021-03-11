@@ -10,8 +10,8 @@ Description: Script to generate a number of pupil plane images stepping across
 
 """
 
+import matplotlib.pyplot as plt
 import numpy as np
-import h5py
 from bdw import BDW
 
 #Name of data file to save
@@ -21,7 +21,10 @@ save_name = 'stepped_data'
 width = 2.5e-3
 
 #Spacing between position steps [m]
-dstep = 0.25e-3
+dstep = width / 32
+
+#Radius of random perturbations [m]
+rad = np.sqrt(2) / 2 * dstep
 
 #Specify simulation parameters
 params = {
@@ -53,21 +56,20 @@ images = np.empty((0, bdw.num_pts, bdw.num_pts))
 positions = np.empty((0, 2))
 
 #Loop over steps in each axis and calculate image
+i = 1
 for x in steps:
-    print(f'Running x step # {len(positions)//len(steps)+1}/{len(steps)}')
+    print(f'Running x step # {i // len(steps) + 1}')
     for y in steps:
 
         #Set shift of telescope
+        x += 2 * rad * (np.random.random_sample() - 0.5)
+        y += 2 * rad * (np.random.random_sample() - 0.5)
         bdw.tel_shift = [x, y]
 
         #Get diffraction and convert to intensity
         img = np.abs(bdw.calculate_diffraction())**2
 
-        #Store
-        images = np.concatenate((images, [img]))
-        positions = np.concatenate((positions, [[x,y]]))
-
-#Save data
-with h5py.File(f'./{save_name}.h5', 'w') as f:
-    f.create_dataset('images', data=images)
-    f.create_dataset('positions', data=positions)
+        plt.imsave(f'test/{i}', img, format='png')
+        with open('test.csv', 'a') as f:
+            f.write(f'{i}, {x}, {y}\n')
+        i += 1

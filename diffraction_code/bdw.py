@@ -164,7 +164,8 @@ class BDW(object):
     def build_starshade(self):
 
         #Load occulter txt data (radius [um], apodization)
-        rads, apod = np.genfromtxt(f'{self.xtras_dir}/{self.apod_name}.dat', delimiter=',').T
+        fname = f'{self.xtras_dir}/{self.apod_name}.dat'
+        rads, apod = np.genfromtxt(fname, delimiter=',', unpack=True)
 
         #Convert to meters and angle
         rads *= 1e-6
@@ -376,7 +377,8 @@ class BDW(object):
     def add_illumination(self, Emap):
         #Build incident field
         u0_opd = (self.tel_pts_x**2 + self.tel_pts_y[:,None]**2) / (self.z1 + self.z0)
-        u0 = self.z0 / (self.z0 + self.z1) * np.exp(1j*self.kk * (u0_opd/2 + self.z1))
+        u0 = self.z0 / (self.z0 + self.z1) * np.exp(1j*self.kk/2 * u0_opd)
+        u0 *= np.exp(1j*self.kk * self.z1)
 
         #Subtract from incident field
         Emap = u0 - Emap

@@ -11,11 +11,8 @@ Description: Add simulated detector noise to images pre-calculated using the BDW
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 import glob
-
-plt.ion()
 
 class Noise_Maker(object):
 
@@ -31,20 +28,20 @@ class Noise_Maker(object):
         def_pms = {
             ### Loading ###
             'load_dir':         '',             #Directory to load pre-made images
-            'load_file_ext':    '',             #File extenstion for data
+            'load_file_ext':    '.npy',         #File extenstion for data
             ### Saving ###
             'save_dir':         './',           #Directory to save images with noise added
             'do_save':          True,           #Save data?
             ### Observation ###
-            'peak_SNR':         5,              #SNR of peak of diffraction pattern
-            'diff_peak':        0.84,           #Peak of diffraction pattern from simulation calculation
+            'target_SNR':       5,              #Target SNR of peak of diffraction pattern
+            'diff_peak':        3.31e-3,        #Peak of diffraction pattern from simulation calculation
+            'count_rate':       100,            #Expected counts/s of peak of diffraction pattern
             ### Detector ###
-            'det_QE':           0.55,           #Detector quantum efficiency
-            'det_read':         3.20,           #Detector read noise [e-/pixel/frame]
-            'det_gain':         0.768,          #Detector inverse-gain [e-/count]
-            'det_dark':         7e-4,           #Detector dark noise [e-/pixel/s]
-            'det_cic':          0.0025,         #Detector CIC noise [e/pixel/frame]
-            'det_bias':         500,            #Detector bias level [counts]
+            'ccd_read':         3.20,           #Detector read noise [e-/pixel/frame]
+            'ccd_gain':         0.768,          #Detector inverse-gain [e-/count]
+            'ccd_dark':         7e-4,           #Detector dark noise [e-/pixel/s]
+            'ccd_cic':          0.0025,         #Detector CIC noise [e/pixel/frame]
+            'ccd_bias':         500,            #Detector bias level [counts]
         }
 
         #Set user and default parameters
@@ -71,7 +68,7 @@ class Noise_Maker(object):
 
     def run_script(self):
         #Get peak count estimate from SNR
-        # peak_cnts = self.get_counts_from_SNR()
+        peak_cnts = self.get_counts_from_SNR()
 
         #Get all filenames
         self.image_files = glob.glob(f'{self.load_dir}/*{self.load_file_ext}')
@@ -80,18 +77,54 @@ class Noise_Maker(object):
         for img_file in self.image_files:
 
             #Load image
-            img = plt.imread(img_file, format='png')
-
-            #Convert to grayscale
-            # img = img[...,:3].dot([0.2989, 0.5870, 0.1140])
+            img = np.load(img_file)
 
             #Add noise to image
-            # img = self.add_noise_to_image(img, peak_cnts)
+            img = self.add_noise_to_image(img, peak_cnts)
 
-            plt.imshow(img)
-            print(img.max((0,1)))
+            #Save image
+            if self.do_save:
+                save_name = img_file.split('/')[-1].split('.npy')[0]
+                np.save(f'{self.save_dir}/{save_name}', img)
 
-            breakpoint()
+############################################
+############################################
+
+############################################
+####   SNR ####
+############################################
+
+    def get_counts_from_SNR(self):
+        #Build SNR for full range of counts
+        sig_count = np.arange(2**16)
+        texp = sig_count / self.count_rate
+        noise = np.sqrt(sig_count*self.ccd_gain + self.ccd_dark*texp + \
+            self.ccd_read**2. + self.ccd_cic)
+        snr = sig_count * self.ccd_gain / noise
+
+        #Find number of counts that corresponds to target SNR
+        counts = sig_count[np.argmin(np.abs(snr - self.target_SNR))]
+
+        return counts
+
+    def check_snr(self, img, texp):
+        #Get max signal
+        signal = np.mean((img.max() - self.ccd_bias) * self.ccd_gain)
+
+        #Get noise
+        noise = np.sqrt(signal + self.ccd_dark*texp + \
+            self.ccd_read**2. + self.ccd_cic)
+
+        #Compare SNR
+        snr = signal / noise
+
+        print(f'SNR: {snr:.2f}, Target SNR: {self.target_SNR:.2f}')
+
+        import matplotlib.pyplot as plt; plt.ion()
+        plt.cla()
+        plt.imshow(img)
+
+        breakpoint()
 
 ############################################
 ############################################
@@ -100,53 +133,40 @@ class Noise_Maker(object):
 ####    Noise Model ####
 ############################################
 
-    def get_counts_from_SNR(self):
-
-        breakpoint()
-
     def add_noise_to_image(self, img, peak_cnts):
 
-        breakpoint()
+        #Turn into counts that would give target SNR
+        img *= peak_cnts / self.diff_peak
+
         #Convert to photons
-        img = np.round(img.T * self.flux_to_photons * exp_time)
+        img = np.round(img * self.ccd_gain)
 
         #Photon noise
-        if with_noise:
-            img = np.random.poisson(img).astype(float)
+        img = np.random.poisson(img).astype(float)
 
         #Dark noise
-        if with_noise:
-            img += np.random.poisson(self.gpilot.dark_noise*exp_time,size=img.shape)
+        exp_time = peak_cnts / self.count_rate
+        img += np.random.poisson(self.ccd_dark*exp_time, size=img.shape)
 
         #CIC noise
-        if with_noise:
-            img += np.random.poisson(self.gpilot.cic_noise,size=img.shape)
-
-        #Add uncertainty in EM gain generation with Gamma distribution (Maxime), else add conv gain
-        if with_noise:
-            if self.gpilot.camera_is_EM:
-                img[img > 0.] = np.random.gamma(img[img > 0.],self.gpilot.camera_EM_gain)
+        img += np.random.poisson(self.ccd_cic, size=img.shape)
 
         #Readout noise on top of bias
-        if with_noise:
-            img += np.random.normal(self.gpilot.ccd_bias*self.gpilot.hardware.camera_gain, \
-                self.gpilot.hardware.read_noise,size=img.shape)
-        else:
-            img += self.gpilot.ccd_bias * self.gpilot.hardware.camera_gain
+        img += np.random.normal(self.ccd_bias*self.ccd_gain, self.ccd_read, size=img.shape)
 
         #Add conventional gain (= CCD sensitivity [e-/count])
-        img /= self.gpilot.hardware.camera_gain
-
-        #Remove EM gain
-        if self.gpilot.camera_is_EM:
-            img += self.gpilot.ccd_bias*(self.gpilot.camera_EM_gain - 1.)
-            img /= self.gpilot.camera_EM_gain
+        img /= self.ccd_gain
 
         #Round to convert to counts
         img = np.round(img)
 
-        plt.imshow(img)
-        breakpoint()
+        #Check SNR
+        # self.check_snr(img, exp_time)
+
+        #Remove bias
+        img -= self.ccd_bias
+
+        return img
 
 ############################################
 ############################################

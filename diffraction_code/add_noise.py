@@ -13,10 +13,13 @@ from noise_maker import Noise_Maker
 
 params = {
         ### Loading ###
-        'load_dir':         '../data/train',            #Directory to load pre-made images
+        'load_dir':         './test',               #Directory to load pre-made images
         ### Saving ###
-        'save_dir':         './noisy_data/train',       #Directory to save images with noise added
-        'do_save':          True,                       #Save data?
+        'save_dir':         './noisy_data/test',    #Directory to save images with noise added
+        'do_save':          True,                   #Save data?
+        ### Observation ###
+        'target_SNR':       5,                      #Target SNR of peak of diffraction pattern
+
 }
 
 #Load instance of noise maker

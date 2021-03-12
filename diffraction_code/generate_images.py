@@ -10,7 +10,6 @@ Description: Script to generate a number of pupil plane images stepping across
 
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
 from bdw import BDW
 
@@ -69,7 +68,8 @@ for x in steps:
         #Get diffraction and convert to intensity
         img = np.abs(bdw.calculate_diffraction())**2
 
-        plt.imsave(f'test/{i}', img, format='png')
+        #Save and write position to csv
+        np.save(f'test/{str(i).zfill(4)}', img)
         with open('test.csv', 'a') as f:
             f.write(f'{i}, {x}, {y}\n')
         i += 1

@@ -11,7 +11,8 @@ Description: BDW uses the Boundary Diffraction Wave (BDW) algorithm of
     is specified by the parameter 'apod_name'. The input to the class is a dictionary
     of parameters (with defaults specified in BDW.set_parameters). The simulation
     is run with BDW.run_sim(). Saves: complex electric field at the pupil, x/y coordinates.
-    WARNING: this version only works in the geometric shadow of a closed occulter shape.
+    WARNING: this version only works completely inside or completely outside the
+    geometric shadow of a closed occulter shape (it doesn't run an inside/outside test).
 
 """
 
@@ -65,6 +66,8 @@ class BDW(object):
             'num_petals':       12,             #Number of starshade petals
             'circle_rad':       12.5e-3,        #Radius of circle occulter
             'num_occ_pts':      1000,           #Number of points in occulter (per petal edge if starshade)
+            'is_illuminated':   False,          #Is illuminated by source? i.e., not completely in the geometric shadow?
+            'is_connected':     False,          #Starshade petals are connected to each other. WFIRST = connected, LAB_SS = not connected
             ### Saving ###
             'verbose':          True,           #Print out status statements?
             'save_dir_base':    './',           #Base directory to save data
@@ -161,7 +164,8 @@ class BDW(object):
     def build_starshade(self):
 
         #Load occulter txt data (radius [um], apodization)
-        rads, apod = np.genfromtxt(f'{self.xtras_dir}/{self.apod_name}.dat', delimiter=',').T
+        fname = f'{self.xtras_dir}/{self.apod_name}.dat'
+        rads, apod = np.genfromtxt(fname, delimiter=',', unpack=True)
 
         #Convert to meters and angle
         rads *= 1e-6
@@ -180,22 +184,42 @@ class BDW(object):
         yy = np.concatenate((yy, -yy[::-1]))
 
         #Rotate and build each petal
-        loci, dls = np.empty((0,2)), np.empty((0,2))
+        occ_pts = np.empty((0, len(xx), 2))
         for i in range(self.num_petals):
             #Rotate to new coordinates
             rot_ang = 2*np.pi/self.num_petals * i
             newx =  xx*np.cos(rot_ang) + yy*np.sin(rot_ang)
             newy = -xx*np.sin(rot_ang) + yy*np.cos(rot_ang)
 
-            #Get midpoint scheme
-            cur_loc, cur_dl = self.get_midpoint_scheme(np.stack((newx, newy), 1))
-
             #Append
-            loci = np.concatenate((loci, cur_loc))
-            dls = np.concatenate((dls, cur_dl))
+            occ_pts = np.concatenate((occ_pts, [np.stack((newx, newy), 1)]))
+
+        #Get midpoint scheme depending on if petals are connected
+        if not self.is_connected:
+
+            #If petals are not connected, loop through and calculate midpoint scheme for each
+            loci, dls = np.empty((0,2)), np.empty((0,2))
+            for i in range(len(occ_pts)):
+                #Get midpoint scheme
+                cur_loc, cur_dl = self.get_midpoint_scheme(occ_pts[i])
+
+                #Append
+                loci = np.concatenate((loci, cur_loc))
+                dls = np.concatenate((dls, cur_dl))
+
+        else:
+
+            #If petals are connected, join together and calculate midpoint scheme for all
+            occ_pts = occ_pts.reshape((-1, 2))
+
+            #Flip direction if connected
+            occ_pts = occ_pts[::-1]
+
+            #Get midpoint scheme
+            loci, dls = self.get_midpoint_scheme(occ_pts)
 
         #Cleanup
-        del rads, apod, newr, newa, newx, newy, xx, yy
+        del rads, apod, newr, newa, newx, newy, xx, yy, occ_pts
 
         return loci, dls
 
@@ -304,6 +328,10 @@ class BDW(object):
         #Add constants in front of integral
         Emap = self.add_leading_terms(Emap)
 
+        #Add illuminated beamm
+        if self.is_illuminated:
+            Emap = self.add_illumination(Emap)
+
         #Add pupil mask
         Emap *= self.pupil_mask
 
@@ -346,6 +374,17 @@ class BDW(object):
 
         return Emap
 
+    def add_illumination(self, Emap):
+        #Build incident field
+        u0_opd = (self.tel_pts_x**2 + self.tel_pts_y[:,None]**2) / (self.z1 + self.z0)
+        u0 = self.z0 / (self.z0 + self.z1) * np.exp(1j*self.kk/2 * u0_opd)
+        u0 *= np.exp(1j*self.kk * self.z1)
+
+        #Subtract from incident field
+        Emap = u0 - Emap
+
+        return Emap
+
 ############################################
 ############################################
 
@@ -374,7 +413,7 @@ if __name__ == '__main__':
 
     params = {
             'num_tel_pts':      64,
-            'num_occ_pts':      1000,
+            'num_occ_pts':      4000,
             'image_pad':        0,
             'apod_name':        'lab_ss',
             # 'apod_name':        'circle',

@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
-from PIL import Image
 import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
@@ -30,8 +29,8 @@ class StarshadeDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_path = os.path.join(self.root_dir, self.shifts.iloc[idx, 0] + '.npy')
-        image = np.load(img_path)
+        img_path = os.path.join(self.root_dir, str(self.shifts.iloc[idx, 0]).zfill(4) + '.npy')
+        image = np.load(img_path).astype('float32')
         xy = self.shifts.iloc[idx, 1:]
         xy = np.array(xy, dtype=np.float32)
         xy *= 1000
@@ -91,10 +90,12 @@ def test(model, testloader):
 
 def main():
 
-    trainset = StarshadeDataset('./data/train.csv', './data/train', transform=transforms.ToTensor())
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0, 1e-3)])
+
+    trainset = StarshadeDataset('./data/train.csv', './data/train', transform=transform)
     trainloader = DataLoader(trainset, batch_size=4, shuffle=True)
 
-    testset = StarshadeDataset('./data/test.csv', './data/test', transform=transforms.ToTensor())
+    testset = StarshadeDataset('./data/test.csv', './data/test', transform=transform)
     testloader = DataLoader(testset, batch_size=4, shuffle=False)
 
     model = CNN()

@@ -30,8 +30,8 @@ class StarshadeDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_path = os.path.join(self.root_dir, str(self.shifts.iloc[idx, 0]))
-        image = np.asarray(Image.open(img_path).convert('L'))
+        img_path = os.path.join(self.root_dir, self.shifts.iloc[idx, 0] + '.npy')
+        image = np.load(img_path)
         xy = self.shifts.iloc[idx, 1:]
         xy = np.array(xy, dtype=np.float32)
         xy *= 1000

@@ -20,7 +20,7 @@ save_name = 'stepped_data'
 width = 2.5e-3
 
 #Spacing between position steps [m]
-dstep = width / 32
+dstep = width / 48
 
 #Radius of random perturbations [m]
 rad = np.sqrt(2) / 2 * dstep
@@ -71,5 +71,5 @@ for x in steps:
         #Save and write position to csv
         np.save(f'test/{str(i).zfill(4)}', img)
         with open('test.csv', 'a') as f:
-            f.write(f'{i}, {x}, {y}\n')
+            f.write(f'{str(i).zfill(4)}, {x}, {y}\n')
         i += 1

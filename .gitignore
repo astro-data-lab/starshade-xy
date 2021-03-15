@@ -4,5 +4,5 @@ __pycache__/
 *$py.class
  
 # Ignoring data files (too large)
-data/*
-noisy_data/*
+#data/*
+#noisy_data/*

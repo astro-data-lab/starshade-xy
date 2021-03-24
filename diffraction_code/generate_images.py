@@ -66,7 +66,7 @@ for x in steps:
         #Set shift of telescope
         nx = x + 2 * rad * (np.random.random_sample() - 0.5)
         ny = y + 2 * rad * (np.random.random_sample() - 0.5)
-        bdw.tel_shift = [x, y]
+        bdw.tel_shift = [nx, ny]
 
         #Get diffraction and convert to intensity
         img = np.abs(bdw.calculate_diffraction())**2
@@ -74,5 +74,5 @@ for x in steps:
         #Save and write position to csv
         np.save(f'test/{str(i).zfill(4)}', img)
         with open('test.csv', 'a') as f:
-            f.write(f'{str(i).zfill(4)}, {x}, {y}\n')
+            f.write(f'{str(i).zfill(4)}, {nx}, {ny}\n')
         i += 1

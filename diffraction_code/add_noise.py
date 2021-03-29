@@ -13,7 +13,7 @@ from noise_maker import Noise_Maker
 
 params = {
         ### Loading ###
-        'load_dir':         './test',               #Directory to load pre-made images
+        'load_dir':         '../data/test',               #Directory to load pre-made images
         ### Saving ###
         'save_dir':         './noisy_data/test',    #Directory to save images with noise added
         'do_save':          True,                   #Save data?

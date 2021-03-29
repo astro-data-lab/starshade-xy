@@ -16,11 +16,14 @@ from bdw import BDW
 #Name of data file to save
 save_name = 'stepped_data'
 
+#Number of steps
+nsteps = 48
+
 #Width of motion grid [m]
 width = 2.5e-3
 
 #Spacing between position steps [m]
-dstep = width / 48
+dstep = width / nsteps
 
 #Radius of random perturbations [m]
 rad = np.sqrt(2) / 2 * dstep
@@ -48,7 +51,7 @@ params = {
 bdw = BDW(params)
 
 #Build steps
-steps = np.arange(-width/2, width/2 + dstep, dstep)
+steps = np.linspace(-width/2, width/2, num=nsteps)
 
 #Containers
 images = np.empty((0, bdw.num_pts, bdw.num_pts))
@@ -61,9 +64,9 @@ for x in steps:
     for y in steps:
 
         #Set shift of telescope
-        x += 2 * rad * (np.random.random_sample() - 0.5)
-        y += 2 * rad * (np.random.random_sample() - 0.5)
-        bdw.tel_shift = [x, y]
+        nx = x + 2 * rad * (np.random.random_sample() - 0.5)
+        ny = y + 2 * rad * (np.random.random_sample() - 0.5)
+        bdw.tel_shift = [nx, ny]
 
         #Get diffraction and convert to intensity
         img = np.abs(bdw.calculate_diffraction())**2
@@ -71,5 +74,5 @@ for x in steps:
         #Save and write position to csv
         np.save(f'test/{str(i).zfill(4)}', img)
         with open('test.csv', 'a') as f:
-            f.write(f'{str(i).zfill(4)}, {x}, {y}\n')
+            f.write(f'{str(i).zfill(4)}, {nx}, {ny}\n')
         i += 1

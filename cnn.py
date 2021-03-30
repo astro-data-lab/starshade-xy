@@ -12,7 +12,7 @@ from torchvision import transforms
 
 
 lr = 1e-3
-num_epochs = 30
+num_epochs = 15
 gamma = 0.8
 
 
@@ -73,7 +73,7 @@ def train(model, trainloader, optimizer, epoch):
         loss.backward()
         optimizer.step()
         if batch_idx % 25 == 0:
-            print(f'Train Epoch: {epoch} [{batch_idx*len(batch["xy"])}/{len(trainloader.dataset)}]\tLoss: {loss.item()}')
+            print(f'Train Epoch: {epoch} [{batch_idx*len(batch["xy"])}/{len(trainloader.dataset)}]\tLoss: {loss.item()/len(batch["xy"])}')
     
 
 def test(model, testloader):
@@ -90,13 +90,13 @@ def test(model, testloader):
 
 def main():
 
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0, 1e-3)])
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0, 1e3)])
 
-    trainset = StarshadeDataset('./data/train.csv', './data/train', transform=transform)
-    trainloader = DataLoader(trainset, batch_size=4, shuffle=True)
+    trainset = StarshadeDataset('./data/train.csv', './noisy_data_5/train', transform=transform)
+    trainloader = DataLoader(trainset, batch_size=8, shuffle=True)
 
-    testset = StarshadeDataset('./data/test.csv', './data/test', transform=transform)
-    testloader = DataLoader(testset, batch_size=4, shuffle=False)
+    testset = StarshadeDataset('./data/test.csv', './noisy_data_5/test', transform=transform)
+    testloader = DataLoader(testset, batch_size=8, shuffle=False)
 
     model = CNN()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-2)
@@ -107,7 +107,7 @@ def main():
         test(model, testloader)
         scheduler.step()
 
-    torch.save(model.state_dict(), "starshade_cnn.pt")
+    torch.save(model.state_dict(), "noisy_starshade_cnn_5.pt")
 
 
 if __name__ == '__main__':

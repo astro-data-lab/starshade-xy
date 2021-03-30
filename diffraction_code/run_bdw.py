@@ -19,7 +19,7 @@ params = {
     'z1':               50.,            #Starshade - telescope distance [m]
 
     ### Telescope ###
-    'tel_diameter':     5e-3,           #Telescope aperture diameter [m]
+    'tel_diameter':     2.4e-3,         #Telescope aperture diameter [m]
     'num_tel_pts':      64,             #Size of grid to calculate over pupil
     'tel_shift':        [0, 0],         #(x,y) shift of telescope relative to starshade-source line [m]
 

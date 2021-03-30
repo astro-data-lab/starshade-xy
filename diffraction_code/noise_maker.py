@@ -36,6 +36,8 @@ class Noise_Maker(object):
             'target_SNR':       5,              #Target SNR of peak of diffraction pattern
             'diff_peak':        3.31e-3,        #Peak of diffraction pattern from simulation calculation
             'count_rate':       100,            #Expected counts/s of peak of diffraction pattern
+            'peak2mean':        0.67,           #Conversion from peak counts to mean counts in FWHM for J_0^2
+            'fwhm':             10,             #Full-width at half-maximum of J_0^2
             ### Detector ###
             'ccd_read':         3.20,           #Detector read noise [e-/pixel/frame]
             'ccd_gain':         0.768,          #Detector inverse-gain [e-/count]
@@ -95,28 +97,46 @@ class Noise_Maker(object):
 ############################################
 
     def get_counts_from_SNR(self):
-        #Build SNR for full range of counts
-        sig_count = np.arange(2**16)
-        texp = sig_count / self.count_rate
-        noise = np.sqrt(sig_count*self.ccd_gain + self.ccd_dark*texp + \
-            self.ccd_read**2. + self.ccd_cic)
-        snr = sig_count * self.ccd_gain / noise
 
-        #Find number of counts that corresponds to target SNR
-        counts = sig_count[np.argmin(np.abs(snr - self.target_SNR))]
+        #Estimate number of points in FWHM
+        num_ap = (self.fwhm - 1)**2
 
-        return counts
+        #Total counts in signal
+        total_sig = np.arange(2**16*num_ap).astype(float)
+
+        #Exposure time to get total counts (count rate is peak count rate)
+        texps = total_sig / (num_ap * self.peak2mean * self.count_rate)
+
+        #Noise for each exposure time
+        noise = np.sqrt(total_sig*self.ccd_gain + num_ap*(self.ccd_dark*texps + \
+            self.ccd_read**2. + self.ccd_cic))
+
+        #Mean SNR
+        mean_snr = total_sig * self.ccd_gain / noise / num_ap
+
+        #Get exposure time from best fit to mean SNR
+        exp_time = texps[np.argmin(np.abs(mean_snr - self.target_SNR))]
+
+        #Get peak counts to aim for
+        peak_counts = self.count_rate * exp_time
+
+        return peak_counts
 
     def check_snr(self, img, texp):
-        #Get max signal
-        signal = np.mean((img.max() - self.ccd_bias) * self.ccd_gain)
+        #Get radius of image around peak
+        cen = np.array(np.unravel_index(np.argmax(img), img.shape))
+        rr = np.hypot(*(np.indices(img.shape).T - cen).T)
+
+        #Get total signal in FWHM
+        signal = (img[rr <= self.fwhm/2] - self.ccd_bias).sum() * self.ccd_gain
+        num_ap = img[rr <= self.fwhm/2].size
 
         #Get noise
-        noise = np.sqrt(signal + self.ccd_dark*texp + \
-            self.ccd_read**2. + self.ccd_cic)
+        noise = np.sqrt(signal + num_ap*(self.ccd_dark*texp + \
+            self.ccd_read**2. + self.ccd_cic))
 
-        #Compare SNR
-        snr = signal / noise
+        #Compare SNR (mean per pixel)
+        snr = signal / noise / num_ap
 
         print(f'SNR: {snr:.2f}, Target SNR: {self.target_SNR:.2f}')
 

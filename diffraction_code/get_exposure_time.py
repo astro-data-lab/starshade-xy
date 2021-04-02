@@ -22,8 +22,8 @@ params = {
     'z1':               50.,            #Starshade - telescope distance [m]
 
     ### Telescope ###
-    'tel_diameter':     2.4e-3,         #Telescope aperture diameter [m]
-    'num_tel_pts':      32,             #Size of grid to calculate over pupil
+    'tel_diameter':     2.2e-3,         #Telescope aperture diameter [m]
+    'num_tel_pts':      48,             #Size of grid to calculate over pupil
     'image_pad':        0,
     'tel_shift':        [0, 0],         #(x,y) shift of telescope relative to starshade-source line [m]
 
@@ -54,6 +54,10 @@ plt.imshow(img)
 
 #FWHM
 fwhm = 2*(np.abs(np.argmin(np.abs(img[len(img)//2] - img.max()/2)) - len(img)/2))
+
+#true fwhm
+tru_fwhm = bdw.wave*bdw.zeff/(np.pi*3.8e-3)*1.13 / (bdw.tel_diameter/bdw.num_tel_pts)
+print(fwhm, tru_fwhm)
 
 #Get num_pixels inside fwhm
 rr = np.hypot(*(np.indices(img.shape) - len(img)/2))

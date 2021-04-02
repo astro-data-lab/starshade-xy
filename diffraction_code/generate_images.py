@@ -34,8 +34,8 @@ params = {
     'wave':             0.405e-6,       #Wavelength of light [m]
 
     ### Telescope ###
-    'tel_diameter':     5e-3,           #Telescope aperture diameter [m]
-    'num_tel_pts':      54,             #Size of grid to calculate over pupil
+    'tel_diameter':     2.2e-3          #Telescope aperture diameter [m]
+    'num_tel_pts':      96,             #Size of grid to calculate over pupil
     'with_spiders':     True,           #Superimpose spiders on pupil image?
 
     ### Starshade ###

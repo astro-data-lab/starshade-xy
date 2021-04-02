@@ -115,6 +115,8 @@ def check_snr_mean(img, texp):
     print(f'Total SNR: {snr:.2f}')
     print(f'Mean SNR: {mean_snr:.2f}')
 
+    # breakpoint()
+
 print(f'Target SNR: {target_SNR:.0f}')
 check_snr_peak(nsy_img, exp_time)
 check_snr_mean(nsy_img, exp_time)

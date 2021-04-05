@@ -35,7 +35,7 @@ params = {
     'do_save':          False,          #Save data?
 }
 
-target_SNR = 5
+target_SNR = 0.2
 
 
 #Load BDW class
@@ -116,10 +116,14 @@ def check_snr_mean(img, texp):
     #Mean
     mean_snr = snr / nap
 
+    std_img = img[rr <= fwhm/2] * maker.ccd_gain
+    std_snr = std_img.mean() / std_img.std()
+
     print(f'Total SNR: {snr:.2f}')
     print(f'Mean SNR: {mean_snr:.2f}')
+    print(f'STD SNR: {std_snr:.2f}')
 
-    # breakpoint()
+    breakpoint()
 
 print(f'Target SNR: {target_SNR:.0f}')
 check_snr_peak(nsy_img, exp_time)

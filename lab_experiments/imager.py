@@ -26,8 +26,7 @@ class Imager(object):
         def_pms = {
             ### FLYER params ###
             'is_sim':               False,
-            'save_dir_base':        './',
-            'session_name':         '',
+            'save_dir':             './',
             'do_save':              False,
             'verbose':              False,
             ### Camera params ###
@@ -91,8 +90,6 @@ class Imager(object):
         if not self.do_save:
             return
 
-        self.save_dir = rf"{self.save_dir_base}\\{self.session_name}"
-
         #Create directory
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
@@ -150,14 +147,8 @@ class Imager(object):
 
     def start_up_pilot(self):
         #Start up hardware
-        self.camera.start_up()
+        self.camera.start_up(plane='pupil')
         self.stage.start_up()
-
-        #Set camera plane
-        self.camera.set_property_cam(self.pilot.hardware.pupil_prop)
-
-        #Flip to pupil plane
-        self.pilot.hardware.switch_to_camera_plane('pupil')
 
     def move_to_pos(self, xpos, ypos):
         #Convert to absolution position
@@ -169,7 +160,7 @@ class Imager(object):
     def take_picture(self, cntr=0):
         #Create filename to save if saving
         if self.do_save:
-            fname = rf"{self.save_dir}\\image__{str(cntr).zfill(4)}"
+            fname = rf"{self.save_dir}\image__{str(cntr).zfill(4)}"
         else:
             fname = None
 

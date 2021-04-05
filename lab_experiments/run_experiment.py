@@ -15,15 +15,14 @@ from imager import Imager
 from datetime import datetime
 
 #Number of steps
-nsteps = 4
+nsteps = 20
 
 #Width of motion grid [m]
-width = 2.5e-3
+width = 1.5e-3
 
 #Saving
-save_dir = './data'
+save_dir = r'.\new_data'
 record_name = 'record'
-session = ''
 
 #Spacing between position steps [m]
 dstep = width / nsteps
@@ -38,21 +37,24 @@ steps = np.linspace(-width/2, width/2, num=nsteps)
 params = {
 
     ### FLYER params ###
-    'is_sim':               True,
-    'save_dir_base':        save_dir,
-    'session_name':         session,
+    'is_sim':               False,
+    'save_dir':             save_dir,
     'do_save':              True,
-    'verbose':              False,
+    'verbose':              True,
     ### Camera params ###
-    'exp_time':             0.01,
-    'num_scans':            1,
+    'exp_time':             30,
+    'num_scans':            3,
     'camera_wait_temp':     True,
-    'camera_temp':          -40,
+    'camera_stable_temp':   True,
+    'camera_temp':          -70,
     'camera_pupil_frame':   [500,700,300,500],
     ### Motion params ###
-    'zero_pos':             [0,0],      #[motor steps]
+    'zero_pos':             [6000,3000],      #[motor steps]
 
 }
+
+#pupilcenter
+pup_cen = (565, 476)
 
 #Load imager
 imgur = Imager(params)
@@ -61,9 +63,10 @@ imgur = Imager(params)
 imgur.setup_run()
 
 #Write signal of new image
-with open(f'{save_dir}/{session}/{record_name}.csv', 'a') as f:
+with open(f'{save_dir}/{record_name}.csv', 'a') as f:
     f.write('#######################\n')
-    f.write(str(datetime.utcnow())+'\n')
+    f.write('#'+str(datetime.utcnow())+'\n')
+    f.write('#'+'Pupil Center '+pup_cen+'\n')
     f.write('#######################\n')
 
 #Loop over positions and take images
@@ -83,7 +86,7 @@ for x in steps:
         imgur.take_picture(i)
 
         #Record exact position
-        with open(f'{save_dir}/{session}/{record_name}.csv', 'a') as f:
+        with open(f'{save_dir}/{record_name}.csv', 'a') as f:
             f.write(f'{str(i).zfill(4)}, {cx}, {cy}\n')
 
         #Increment

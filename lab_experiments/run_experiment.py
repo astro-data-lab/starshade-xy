@@ -56,18 +56,18 @@ params = {
 #pupilcenter
 pup_cen = (565, 476)
 
+#Write signal of new image
+with open(f'{save_dir}/{record_name}.csv', 'a') as f:
+    f.write('#######################\n')
+    f.write('#'+str(datetime.utcnow())+'\n')
+    f.write(f'# Pupil Center: {pup_cen[0]:.0f}, {pup_cen[1]:.0f}\n')
+    f.write('#######################\n')
+
 #Load imager
 imgur = Imager(params)
 
 #Setup run
 imgur.setup_run()
-
-#Write signal of new image
-with open(f'{save_dir}/{record_name}.csv', 'a') as f:
-    f.write('#######################\n')
-    f.write('#'+str(datetime.utcnow())+'\n')
-    f.write('#'+'Pupil Center '+pup_cen+'\n')
-    f.write('#######################\n')
 
 #Loop over positions and take images
 i = 1

@@ -38,6 +38,8 @@ class Imager(object):
             'camera_is_EM':         False,
             'camera_EM_gain':       300,
             'camera_pupil_frame':   None,
+            'camera_pupil_center':  None,
+            'camera_pupil_width':   None,
             ### Motion params ###
             'rad':                  3,          #[mm]
             'nsteps':               10,

@@ -21,7 +21,7 @@ nsteps = 20
 width = 1.5e-3
 
 #Saving
-save_dir = r'.\new_data'
+save_dir = r'C:\Users\starshade_lab\repos\starshade-xy\lab_experiments\new_data'
 record_name = 'record'
 
 #Spacing between position steps [m]
@@ -32,6 +32,9 @@ rad = np.sqrt(2) / 2 * dstep
 
 #Build steps
 steps = np.linspace(-width/2, width/2, num=nsteps)
+
+#pupilcenter
+pup_cen = (566, 476)
 
 #Imager parameters
 params = {
@@ -47,14 +50,12 @@ params = {
     'camera_wait_temp':     True,
     'camera_stable_temp':   True,
     'camera_temp':          -70,
-    'camera_pupil_frame':   [500,700,300,500],
+    'camera_pupil_center':  pup_cen,
+    'camera_pupil_width':   250,
     ### Motion params ###
-    'zero_pos':             [6000,3000],      #[motor steps]
+    'zero_pos':             [-5500,1500],      #[motor steps]
 
 }
-
-#pupilcenter
-pup_cen = (565, 476)
 
 #Write signal of new image
 with open(f'{save_dir}/{record_name}.csv', 'a') as f:

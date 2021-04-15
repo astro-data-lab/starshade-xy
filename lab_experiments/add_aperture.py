@@ -17,14 +17,16 @@ import glob
 import image_util
 from scipy.ndimage import affine_transform
 
+session = ['new_data_30s', 'data_30s_bin2', 'data_20s_bin4', 'data_60s_bin4'][3]
+
+is_med = True
+
 #Choose aperture size for proper scaling to space
 num_pts = 96
 image_pad = 10
 
 #aperture size (from pupil magnification)
 Dtel = num_pts * 1.748*13e-6
-
-session = 'new_data_30s'
 
 #TODO: hide
 data_dir = f'/home/aharness/Research/Frick_Lab/Data/FFNN/{session}'
@@ -40,6 +42,10 @@ def get_image(inum):
 #Get image shape
 img0 = get_image(len(record)//2)
 img_shp = img0.shape[-2:]
+
+#Get binning
+nbin = int(np.round(250/img_shp[0]))
+num_pts //= nbin
 
 #Load Pupil Mask
 with h5py.File(f'../diffraction_code/xtras/pupil_mask.h5', 'r') as f:
@@ -78,8 +84,9 @@ for i in range(len(record)):
     img = get_image(int(record[i][0]))
 
     #Get excess regions
-    excess = np.concatenate((img[:,:50,:50], img[:,:50,-50:], \
-        img[:,-50:,:50], img[:,-50:,-50:])).flatten()
+    nbk = 40//nbin
+    excess = np.concatenate((img[:,:nbk,:nbk], img[:,:nbk,-nbk:], \
+        img[:,-nbk:,:nbk], img[:,-nbk:,-nbk:])).flatten()
 
     #Add mask
     img *= pupil_mask
@@ -91,12 +98,19 @@ for i in range(len(record)):
     #Subtract background
     img -= np.median(excess)
 
+    #Take median
+    if is_med:
+        img = np.array([np.median(img, 0)])
+
     #Plot
     if [False, True][0]:
         print(i, pos*1e3)
         for j in range(img.shape[0]):
             plt.cla()
-            plt.imshow(img[j])
+            # plt.imshow(img[j])
+            cimg = image_util.crop_image(img[j], None, num_pts//2+image_pad)
+            plt.imshow(cimg)
+            print(num_pts, cimg.shape)
             breakpoint()
 
     #Store images + positions
@@ -110,8 +124,11 @@ plt.cla()
 plt.imshow(imgs[len(imgs)//2])
 
 #Save
-if [False, True][0]:
-    with h5py.File(f'./Results/{session}.h5', 'w') as f:
+if [False, True][1]:
+
+    ext = ['', '__median'][int(is_med)]
+
+    with h5py.File(f'./Results/{session}{ext}.h5', 'w') as f:
         f.create_dataset('num_tel_pts', data=num_pts)
         f.create_dataset('image_pad', data=image_pad)
         f.create_dataset('tel_diameter', data=Dtel)

@@ -40,6 +40,7 @@ class Imager(object):
             'camera_pupil_frame':   None,
             'camera_pupil_center':  None,
             'camera_pupil_width':   None,
+            'binning':              1,
             ### Motion params ###
             'rad':                  3,          #[mm]
             'nsteps':               10,
@@ -135,8 +136,10 @@ class Imager(object):
 ############################################
 
     def load_pilot(self):
+        #get tel rad for proper binning
+        trad = {1:1, 2:1.5, 4:3}[self.binning]
         pms = {'is_sim': self.is_sim, 'verbose': self.verbose, \
-            'spc_tel_radius': 1}     #ensures no binning
+            'spc_tel_radius': trad}
         for k in self.params.keys():
             if k.startswith('camera'):
                 pms[k] = getattr(self, k)
@@ -153,8 +156,9 @@ class Imager(object):
         self.stage.start_up()
 
     def move_to_pos(self, xpos, ypos):
-        #Convert to absolution position
-        abs_pos = self.zero_pos/self.stage.COUNTS_PER_MM + np.array([xpos, ypos])
+        #Convert to absolution position (need to convert to mm)
+        abs_pos = self.zero_pos/self.stage.COUNTS_PER_MM + \
+            1e3 * np.array([xpos, ypos])
 
         #Move
         self.stage.move_abs_position(*abs_pos)

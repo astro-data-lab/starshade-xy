@@ -12,7 +12,7 @@ import numpy as np
 from imager import Imager
 import matplotlib.pyplot as plt;plt.ion()
 
-exp_time = 30
+exp_time = 60
 
 ##############
 
@@ -21,18 +21,18 @@ params = {
 
     ### FLYER params ###
     'is_sim':               False,
-    'do_save':              True,
+    'do_save':              False,
     'verbose':              True,
     ### Camera params ###
     'exp_time':             exp_time,
     'num_scans':            1,
     'camera_wait_temp':     False,
-    'camera_temp':          -70,
-    'camera_pupil_center':  (566, 476),
+    'camera_temp':          -80,
+    'camera_pupil_center':  (567, 475),
     'camera_pupil_width':   250,
-
+    'binning':              4,
     ### Motion params ###
-    'zero_pos':             [-5500, 1500],      #[motor steps]
+    'zero_pos':             [2500, 7000],      #[motor steps]
 
 }
 
@@ -48,14 +48,20 @@ imgur.move_to_pos(0,0)
 #Take picture
 img = imgur.take_picture()[0]
 
+# from astropy.io import fits
+# with fits.open(r'.\new_data_30s\image__0191.fits') as hdu:
+#     img = hdu[0].data[0].astype(float)
+
 #Subtract out bias
-img -= 500
+nbk = 40//params['binning']
+img -= np.median(np.concatenate((img[:nbk,:nbk],img[:nbk,-nbk:], img[-nbk:,:nbk], img[-nbk:,-nbk:])))
 
 #Show image
+plt.plot(img.shape[0]/2, img.shape[1]/2, 'r+')
 plt.imshow(img)
 
 #FWHM
-fwhm = 30
+fwhm = 30 / params['binning']
 gain = 0.768
 
 #Get num_pixels inside fwhm
@@ -81,6 +87,6 @@ noise = np.sqrt(signal + num_ap*(ccd_dark*exp_time + \
 snr = signal/noise/num_ap
 
 
-print(f'\nExposure time: {exp_time:.1f} [s], SNR: {snr:.3f} [per pixel]\n')
+print(f'\nExposure time: {exp_time:.1f} [s], SNR: {snr:.3f} [per pixel], SNR2: {snr2:.3f}\n')
 
 breakpoint()

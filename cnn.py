@@ -11,27 +11,29 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
 
+img_size = 116
 lr = 1e-3
-num_epochs = 30
+num_epochs = 15
 gamma = 0.8
 
 
 class StarshadeDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
-        self.shifts = pd.read_csv(csv_file)
+        self.shifts = pd.read_csv(csv_file, header=None)
         self.root_dir = root_dir
         self.transform = transform
 
     def __len__(self):
-        return len(self.shifts)
+        return len(self.shifts) * 9
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_path = os.path.join(self.root_dir, str(self.shifts.iloc[idx, 0]).zfill(4) + '.npy')
+        img_path = os.path.join(self.root_dir, str(idx+1).zfill(6) + '.npy')
         image = np.load(img_path).astype('float32')
-        xy = self.shifts.iloc[idx, 1:]
+        image = image / np.amax(image)
+        xy = self.shifts.iloc[idx % 2304, 1:]
         xy = np.array(xy, dtype=np.float32)
         xy *= 1000
 
@@ -47,7 +49,7 @@ class CNN(nn.Module):
         super(CNN, self).__init__()
         self.conv1 = nn.Conv2d(1, 8, 3, 1)
         self.conv2 = nn.Conv2d(8, 16, 3, 1)
-        self.fc1 = nn.Linear(4624, 128)
+        self.fc1 = nn.Linear(16 * (((img_size - 2) // 2 - 2) // 2) * (((img_size - 2) // 2 - 2) // 2), 128)
         self.fc2 = nn.Linear(128, 2)
         
     def forward(self, X):
@@ -73,7 +75,7 @@ def train(model, trainloader, optimizer, epoch):
         loss.backward()
         optimizer.step()
         if batch_idx % 25 == 0:
-            print(f'Train Epoch: {epoch} [{batch_idx*len(batch["xy"])}/{len(trainloader.dataset)}]\tLoss: {loss.item()}')
+            print(f'Train Epoch: {epoch} [{batch_idx*len(batch["xy"])}/{len(trainloader.dataset)}]\tLoss: {loss.item()/len(batch["xy"])}')
     
 
 def test(model, testloader):
@@ -90,13 +92,13 @@ def test(model, testloader):
 
 def main():
 
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0, 1e-3)])
+    transform = transforms.Compose([transforms.ToTensor()])
 
-    trainset = StarshadeDataset('./data/train.csv', './data/train', transform=transform)
-    trainloader = DataLoader(trainset, batch_size=4, shuffle=True)
+    trainset = StarshadeDataset('./data/data96/train.csv', './data/data96/all_data/train', transform=transform)
+    trainloader = DataLoader(trainset, batch_size=8, shuffle=True)
 
-    testset = StarshadeDataset('./data/test.csv', './data/test', transform=transform)
-    testloader = DataLoader(testset, batch_size=4, shuffle=False)
+    testset = StarshadeDataset('./data/data96/test.csv', './data/data96/all_data/test', transform=transform)
+    testloader = DataLoader(testset, batch_size=8, shuffle=False)
 
     model = CNN()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-2)
@@ -107,7 +109,7 @@ def main():
         test(model, testloader)
         scheduler.step()
 
-    torch.save(model.state_dict(), "starshade_cnn.pt")
+    torch.save(model.state_dict(), "models/noisy96_all.pt")
 
 
 if __name__ == '__main__':

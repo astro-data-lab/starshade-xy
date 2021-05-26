@@ -15,20 +15,50 @@ from astropy.io import fits
 import h5py
 import glob
 import image_util
+import photo_functions as pfunc
 from scipy.ndimage import affine_transform
 
-all_sessions = ['data_30s_bin1', 'data_30s_bin2', 'data_20s_bin4', \
-    'data_60s_bin4']
+###########################################
+
+all_runs = ['data_1s_bin1', 'data_1s_bin2', 'data_1s_bin4']
+session = 'run__5_26_21'
 
 is_med = False
-do_save = True
+do_save = False
 
 #Mask type. Use 'none' for centroiding images
 mask_type = ['spiders', 'round', 'none'][0]
 
 do_plot = [False, True][0]
 
-for session in all_sessions:
+#Base directory
+base_dir = '/home/aharness/Research/Frick_Lab/Data/FFNN'
+
+###########################################
+
+#Get photometer data
+photo_data = pfunc.load_photometer_data(f'{base_dir}/{session}', None)
+
+###########################################
+
+#Load calibration data
+fname = f'{base_dir}/{session}/cal_con.fits'
+cimg, cexp, cpho = pfunc.get_image_data(fname, photo_data)
+
+#Crop
+max_pt = np.unravel_index(np.argmax(cimg[0]), cimg.shape[1:])[::-1]
+cimg = image_util.crop_image(cimg, max_pt, 50)
+
+#Get normalized median
+med = np.median(cimg / cpho[:,None,None], 0)
+
+#Get peak from max
+cal_value = med.max()
+
+###########################################
+
+#Loop through and process multiple sessions
+for run in all_runs:
 
     #Don't crop if no mask
     do_crop = mask_type == 'none'
@@ -43,30 +73,32 @@ for session in all_sessions:
     #aperture size (from pupil magnification)
     Dtel = num_pts * 1.748*13e-6
 
-    #TODO: hide
-    data_dir = f'/home/aharness/Research/Frick_Lab/Data/FFNN/{session}'
-
     #Read record
+    data_dir = f'{base_dir}/{session}/{run}'
     record = np.genfromtxt(f'{data_dir}/record.csv', delimiter=',')
 
     def get_image(inum):
-        with fits.open(f'{data_dir}/image__{str(inum).zfill(4)}.fits') as hdu:
-            data = hdu[0].data.astype(float)
-            exp = hdu[0].header['EXPOSURE']
-        return data, exp
+        #Get data
+        fname = f'{data_dir}/image__{str(inum).zfill(4)}.fits'
+        img, exp, pho = pfunc.get_image_data(fname, photo_data)
+        #Normalize
+        img /= pho[:,None,None] * cal_value
+        return img, exp
 
     #Get image shape
-    img0, exp = get_image(len(record)//2)
+    img0, exp0 = get_image(len(record)//2)
     img_shp = img0.shape[-2:]
 
     #Get binning
     nbin = int(np.round(250/img_shp[0]))
     num_pts //= nbin
 
+    ##################
+
     #Use spider mask or just round aperture
     if mask_type == 'spiders':
         #Load Pupil Mask
-        with h5py.File(f'../diffraction_code/xtras/pupil_mask.h5', 'r') as f:
+        with h5py.File(f'../../diffraction_code/xtras/pupil_mask.h5', 'r') as f:
             full_mask = f['mask'][()]
 
         #Do affine transform
@@ -112,6 +144,8 @@ for session in all_sessions:
     #Tile for multiple exposures
     spiders = np.tile(spiders, (img0.shape[0], 1, 1))
     out_mask = np.tile(out_mask, (img0.shape[0], 1, 1))
+
+    ##################
 
     #Loop through steps and get images and exposure times + backgrounds
     imgs = np.empty((0,) + img_shp)
@@ -165,6 +199,8 @@ for session in all_sessions:
         #Store exposure time + backgrounds + number of frames
         meta = np.concatenate((meta, [[exp, back, nframe]]))
 
+    ##################
+
     #Trim images
     if do_crop:
         imgs = image_util.crop_image(imgs, None, num_pts//2+image_pad)
@@ -180,7 +216,7 @@ for session in all_sessions:
 
         ext = ['', '__median'][int(is_med)]
 
-        with h5py.File(f'./Results/{session}__{mask_type}{ext}.h5', 'w') as f:
+        with h5py.File(f'./Results/{session}__{run}__{mask_type}{ext}.h5', 'w') as f:
             f.create_dataset('num_tel_pts', data=num_pts)
             f.create_dataset('base_num_pts', data=base_num_pts)
             f.create_dataset('binning', data=nbin)
@@ -190,4 +226,4 @@ for session in all_sessions:
             f.create_dataset('positions', data=locs, compression=8)
             f.create_dataset('images', data=imgs, compression=8)
 
-# breakpoint()
+    # breakpoint()

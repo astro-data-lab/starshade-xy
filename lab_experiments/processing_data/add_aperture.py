@@ -61,7 +61,7 @@ cal_value = med.max()
 for run in all_runs:
 
     #Don't crop if no mask
-    do_crop = mask_type == 'none'
+    do_crop = mask_type != 'none'
 
     #Choose aperture size for proper scaling to space
     base_num_pts = 96
@@ -197,7 +197,7 @@ for run in all_runs:
         imgs = np.concatenate((imgs, img))
         locs = np.concatenate((locs, [pos]*img.shape[0]))
         #Store exposure time + backgrounds + number of frames
-        meta = np.concatenate((meta, [[exp, back, nframe]]))
+        meta = np.concatenate((meta, [[exp, back, nframe]]*img.shape[0]))
 
     ##################
 

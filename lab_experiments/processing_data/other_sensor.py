@@ -348,9 +348,9 @@ if __name__ == '__main__':
     params = {
         # 'image_file':       './Results/data_20s_bin4__none__median.h5',
         # 'image_file':       './Results/data_20s_bin4__none__median.h5',
-        'image_file':       './Results/data_30s_bin1__none__median.h5',
-        'debug':            [False, True][0],
-        'do_save':          [False, True][1],
+        'image_file':       './Old/Results/data_30s_bin1__none__median.h5',
+        'debug':            [False, True][1],
+        'do_save':          [False, True][0],
         'sensing_method':   'centroid',
     }
 

@@ -13,23 +13,23 @@ Description: Script to estimate the true position of experimental images using
 import numpy as np
 from other_sensor import Other_Sensor
 
-all_sessions = ['data_30s_bin1', 'data_30s_bin2', 'data_20s_bin4', \
-    'data_60s_bin4']
+all_runs = ['data_1s_bin1', 'data_1s_bin2', 'data_1s_bin4']
+session = 'run__5_26_21'
 
-is_med = True
+is_med = False
 data_dir = './Results'
 true_dir = './Truth_Results'
 
-for session in all_sessions:
+for run in all_runs:
 
-    fname = f'{data_dir}/{session}__none' + ['','__median'][int(is_med)] + '.h5'
+    fname = f'{data_dir}/{session}__{run}__none' + ['','__median'][int(is_med)] + '.h5'
 
     params = {
         'image_file':       fname,
-        'debug':            [False, True][0],
-        'do_save':          [False, True][1],
+        'debug':            [False, True][1],
+        'do_save':          [False, True][0],
         'save_dir':         true_dir,
-        'sensing_method':   ['centroid', 'model'][0],
+        'sensing_method':   ['centroid', 'model'][1],
     }
 
     sen = Other_Sensor(params)

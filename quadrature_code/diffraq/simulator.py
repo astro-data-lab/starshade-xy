@@ -84,6 +84,13 @@ class Simulator(object):
         #Aperture points
         self.tel_pts = self.get_grid_points(self.num_pts, width=self.tel_diameter)
 
+    def setup_sim(self):
+        #Load pupil mask
+        self.load_pupil_mask()
+
+        #Build quadrature
+        self.build_quadrature()
+
 ############################################
 ############################################
 
@@ -97,24 +104,21 @@ class Simulator(object):
         if self.verbose:
             print(f"\nRunning '{self.apod_name}' on {self.num_pts} x {self.num_pts} grid...\n")
 
-        #Load pupil mask
-        self.load_pupil_mask()
-
-        #Build quadrature
-        self.build_quadrature()
+        #Setup
+        self.setup_sim()
 
         #Calculate diffraction
-        Emap, tel_xy = self.calculate_diffraction(self.tel_shift)
+        Emap = self.calculate_diffraction()
 
-        #Store
-        self.tel_pts_x, self.tel_pts_y = tel_xy
+        #Store position
+        self.tel_pts_x, self.tel_pts_y = self.tel_pts + np.array(self.tel_shift)[:,None]
 
         #Print out finish time
         if self.verbose:
             print(f'\nDone! Time: {time.perf_counter() - start:.2f} [s]\n')
 
         #Save data
-        self.save_data(Emap, tel_xy)
+        self.save_data(Emap)
 
         return Emap
 
@@ -125,15 +129,18 @@ class Simulator(object):
 ####   Diffraction Calcs ####
 ############################################
 
-    def calculate_diffraction(self, offset=[0,0]):
+    def calculate_diffraction(self):
 
         #Adjust occulter values if off_axis (shift doesn't go into beam function)
-        if not np.isclose(0, np.hypot(*offset)):
-            xq = self.xq - offset[0] * self.z_scl
-            yq = self.yq - offset[1] * self.z_scl
+        if not np.isclose(0, np.hypot(*self.tel_shift)):
+            xq = self.xq - self.tel_shift[0] * self.z_scl
+            yq = self.yq - self.tel_shift[1] * self.z_scl
+            xoff = 2*(self.tel_pts*self.tel_shift[0] + self.tel_pts[:,None]*self.tel_shift[1])
+            xoff += np.hypot(*self.tel_shift)**2
         else:
             xq = self.xq
             yq = self.yq
+            xoff = 0
 
         #lambda * z
         lamzz = self.wave * self.z1
@@ -144,16 +151,7 @@ class Simulator(object):
             self.tel_pts, self.fft_tol, lamz0=lamz0, is_babinet=self.is_babinet)
 
         #Account for extra phase added by off_axis
-        xoff = 2*(self.tel_pts*offset[0] + self.tel_pts[:,None]*offset[1])
-        uu *= np.exp(1j*np.pi/lamz0*self.z_scl * (np.hypot(*offset)**2 + xoff))
-
-        # breakpoint()
-        # # roff =
-        # uu *= np.exp(1j*np.pi/lamz0*self.z_scl*(offset[0]**2 + offset[1]**2))
-        #
-        # # # breakpoint()
-        # uu *= np.exp(1j*np.pi/lamz0*self.z_scl * 2 * \
-        #     (self.tel_pts*offset[0] + self.tel_pts[:,None]*offset[1]))
+        uu *= np.exp(1j*np.pi/lamz0*self.z_scl * xoff)
 
         #Multiply by plane wave
         uu *= np.exp(1j * 2*np.pi/self.wave * self.z1)
@@ -161,10 +159,7 @@ class Simulator(object):
         #Add pupil mask
         uu *= self.pupil_mask
 
-        #Return shifted points
-        tel_xy = self.tel_pts + np.array(self.tel_shift)[:,None]
-
-        return uu, tel_xy
+        return uu
 
 ############################################
 ############################################
@@ -273,7 +268,7 @@ class Simulator(object):
 
         return grid_pts
 
-    def save_data(self, Emap, tel_xy):
+    def save_data(self, Emap):
         if not self.do_save:
             return
 
@@ -283,7 +278,8 @@ class Simulator(object):
         #Save
         with h5py.File(f'{self.save_dir}/diffraq_pupil{save_ext}.h5', 'w') as f:
             f.create_dataset('pupil_Ec', data = Emap)
-            f.create_dataset('pupil_xy', data = tel_xy)
+            f.create_dataset('pupil_x', data = self.tel_pts_x)
+            f.create_dataset('pupil_y', data = self.tel_pts_y)
 
 ############################################
 ############################################

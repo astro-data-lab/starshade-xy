@@ -13,7 +13,7 @@ Description: Script to estimate the true position of experimental images using
 import numpy as np
 from other_sensor import Other_Sensor
 
-all_runs = ['data_1s_bin1', 'data_1s_bin2', 'data_1s_bin4']
+all_runs = ['data_1s_bin1', 'data_2s_bin1']
 session = 'run__6_01_21'
 
 is_med = True
@@ -26,10 +26,10 @@ for run in all_runs:
 
     params = {
         'image_file':       fname,
-        'debug':            [False, True][1],
-        'do_save':          [False, True][0],
+        'debug':            [False, True][0],
+        'do_save':          [False, True][1],
         'save_dir':         true_dir,
-        'sensing_method':   ['centroid', 'model'][0],
+        'sensing_method':   ['centroid', 'model'][1],
     }
 
     sen = Other_Sensor(params)

@@ -49,6 +49,7 @@ params = {
 
 #Load simulator
 sim = diffraq.Simulator(params)
+sim.setup_sim()
 
 #Build steps
 steps = np.linspace(-width/2, width/2, num=nsteps)

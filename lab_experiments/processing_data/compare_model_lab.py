@@ -14,11 +14,9 @@ import matplotlib.pyplot as plt;plt.ion()
 import h5py
 import os
 import imp
-#Import BDW
-diff_dir = os.path.join(os.pardir, os.pardir, "diffraction_code")
-imp.load_source("bdw", os.path.join(diff_dir,"bdw.py"))
-from bdw import BDW
-from scipy.ndimage import shift
+#Import diffraq
+diff_dir = os.path.join(os.pardir, os.pardir, "quadrature_code")
+diffraq = imp.load_source("diffraq", os.path.join(diff_dir,"diffraq","__init__.py"))
 import image_util
 
 session = 'run__6_01_21'
@@ -27,7 +25,7 @@ mask_type = ['spiders', 'round', 'none'][2]
 is_med = True
 
 #Desired center (in fractions of tel_radius)
-frac_cen = [0., 0.5]
+frac_cen = [0., 0.]
 
 ############################################
 ####    Load Lab Data ####
@@ -64,6 +62,9 @@ if mask_type == 'none':
     lab_params['num_tel_pts'] = lab_img.shape[-1]
     lab_params['image_pad'] = 0
 
+#Add one pixel to match diffraq
+pos0 += lab_params['tel_diameter']/lab_params['num_tel_pts']
+
 ############################################
 ####    Simulate Image ####
 ############################################
@@ -93,29 +94,12 @@ params = {
 for k in lab_keys:
     params[k] = lab_params[k]
 
-#Load BDW class
-bdwc = BDW(params)
+#Load simulator class
+sim = diffraq.Simulator(params)
+sim.setup_sim()
 
-#Check if file exists
-sim_file = f'./tmp_save/bdw_image__{mask_type}__{str(ind0).zfill(4)}.h5'
-
-#Calculate or Load simulated image?
-if [False, True][0] or not os.path.exists(sim_file):
-
-    print('Running BDW...')
-
-    #Get diffraction and convert to intensity
-    sim_img = np.abs(bdwc.calculate_diffraction())**2
-
-    #Save image
-    with h5py.File(sim_file, 'w') as f:
-        f.create_dataset('image', data=sim_img)
-
-else:
-
-    #Load image
-    with h5py.File(sim_file, 'r') as f:
-        sim_img = f['image'][()]
+#Get diffraction and convert to intensity
+sim_img = np.abs(sim.calculate_diffraction())**2
 
 #Pad image if needed
 if sim_img.shape != lab_img.shape:
@@ -132,15 +116,13 @@ if sim_img.shape != lab_img.shape:
 # lab_img /= np.mean(lab_img)
 # sim_img /= np.mean(sim_img)
 
-# lab_img = shift(lab_img, (1, 1.), order=5)
-
 # #Residuals
 # res1 = lab_img/lab_img.max() - sim_img/sim_img.max()
 res2 = lab_img/lab_img.mean() - sim_img/sim_img.mean()
 
 #Get sum of center peak
 dn = 10
-cen = (-pos0 / (bdwc.tel_pts[1] - bdwc.tel_pts[0]) + np.array(lab_img.shape)/2).astype(int)
+cen = (-pos0 / (sim.tel_pts[1] - sim.tel_pts[0]) + np.array(lab_img.shape)/2).astype(int)
 lab_sum = image_util.crop_image(lab_img, cen, dn).sum()
 sim_sum = image_util.crop_image(sim_img, cen, dn).sum()
 
@@ -158,13 +140,14 @@ res1 *= 100 / (lab_img.max() / lab_sum)
 res2 *= 100 / (lab_img.max() / lab_sum)
 
 #Plot
-fig, axes = plt.subplots(1, 2, figsize=(7, 5), sharex=True, sharey=True)
-lp = axes[0].imshow(lab_img)
-sp = axes[1].imshow(sim_img)
-axes[0].set_title('Lab')
-axes[1].set_title('Sim')
-plt.colorbar(lp, ax=axes[0], orientation='horizontal')
-plt.colorbar(sp, ax=axes[1], orientation='horizontal')
+if [False, True][0]:
+    fig, axes = plt.subplots(1, 2, figsize=(7, 5), sharex=True, sharey=True)
+    lp = axes[0].imshow(lab_img)
+    sp = axes[1].imshow(sim_img)
+    axes[0].set_title('Lab')
+    axes[1].set_title('Sim')
+    plt.colorbar(lp, ax=axes[0], orientation='horizontal')
+    plt.colorbar(sp, ax=axes[1], orientation='horizontal')
 
 rfig, raxes = plt.subplots(1, 2, figsize=(7, 5), sharex=True, sharey=True)
 fres = raxes[0].imshow(res1)

@@ -264,6 +264,7 @@ class BDW(object):
             self.pupil_mask[self.pupil_mask > 1] = 1
 
         elif self.skip_mask:
+            #Don't have any mask
             self.pupil_mask = np.ones((self.num_pts, self.num_pts))
 
         else:

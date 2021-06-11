@@ -21,13 +21,13 @@ from scipy.ndimage import affine_transform
 ###########################################
 
 all_runs = ['data_1s_bin1', 'data_1s_bin2', 'data_1s_bin4']
-session = 'run__5_26_21'
+session = 'run__6_01_21'
 
 is_med = False
 do_save = False
 
 #Mask type. Use 'none' for centroiding images
-mask_type = ['spiders', 'round', 'none'][0]
+mask_type = ['spiders', 'round', 'none'][1]
 
 do_plot = [False, True][0]
 

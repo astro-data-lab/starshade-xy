@@ -14,9 +14,9 @@ import numpy as np
 from other_sensor import Other_Sensor
 
 all_runs = ['data_1s_bin1', 'data_1s_bin2', 'data_1s_bin4']
-session = 'run__5_26_21'
+session = 'run__6_01_21'
 
-is_med = False
+is_med = True
 data_dir = './Results'
 true_dir = './Truth_Results'
 
@@ -29,7 +29,7 @@ for run in all_runs:
         'debug':            [False, True][1],
         'do_save':          [False, True][0],
         'save_dir':         true_dir,
-        'sensing_method':   ['centroid', 'model'][1],
+        'sensing_method':   ['centroid', 'model'][0],
     }
 
     sen = Other_Sensor(params)

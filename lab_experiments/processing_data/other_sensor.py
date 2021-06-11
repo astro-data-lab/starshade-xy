@@ -68,16 +68,16 @@ class Other_Sensor(object):
     def setup(self):
         #Load data
         keys = ['num_tel_pts', 'image_pad', 'tel_diameter', 'positions', \
-            'images', 'base_num_pts', 'binning', 'meta']
+            'base_num_pts', 'binning', 'meta']
         with h5py.File(self.image_file, 'r') as f:
             for k in keys:
                 setattr(self, k, f[k][()])
+            self.img_shp = f['images'].shape[-2:]
 
         #Pupil magnification [m/pixel]
         self.pupil_mag = self.tel_diameter / self.base_num_pts
 
         #Get position arrays
-        self.img_shp = self.images.shape[-2:]
         cen = np.array(self.img_shp)/2
         self.yy, self.xx = (np.indices(self.img_shp).T + cen[::-1] - \
             np.array(self.img_shp)).T
@@ -94,6 +94,11 @@ class Other_Sensor(object):
         self.kRz = 2.*np.pi/self.wave * self.ss_radius * self.pupil_mag / self.z1
 
         #TODO: assume no mask for now
+
+    def load_image(self, i):
+        with h5py.File(self.image_file, 'r') as f:
+            img = f['images'][i]
+        return img
 
 ############################################
 ############################################
@@ -114,16 +119,16 @@ class Other_Sensor(object):
         truth = np.empty((0,2))
         errs = np.empty((0,2))
         flags = np.array([])
-        for i in range(len(self.images)):
+        for i in range(len(self.meta)):
 
             #Get current image
-            img = self.images[i]
+            img = self.load_image(i)
 
             #Get image error
             det_var = self.ccd_dark*self.meta[i][0] + self.ccd_cic**2. + \
                 self.ccd_read**2.
 
-            #Get initial guess (convert to pixels)
+            #Get initial guess
             pos0 = self.positions[i]
 
             #Sense position

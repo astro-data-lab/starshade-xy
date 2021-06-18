@@ -1,14 +1,3 @@
-"""
-compare_model_lab.py
-
-Author: Anthony Harness
-Affiliation: Princeton University
-Created on: 06-11-2021
-
-Description: Script to compare experimental and model pupil plane images.
-
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
@@ -17,8 +6,9 @@ import imp
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 #Import diffraq
-diff_dir = os.path.join(os.pardir, os.pardir, "quadrature_code")
-diffraq = imp.load_source("diffraq", os.path.join(diff_dir,"diffraq","__init__.py"))
+diff_dir = os.path.join(os.pardir, os.pardir, "diffraction_code")
+bdw = imp.load_source("bdw", os.path.join(diff_dir,"bdw.py"))
+from bdw import BDW
 import image_util
 
 session = 'run__6_01_21'
@@ -27,7 +17,7 @@ mask_type = ['spiders', 'round', 'none'][0]
 is_med = True
 
 #Desired center (in fractions of tel_radius)
-frac_cen = [0., 0.5]
+frac_cen = [0., 0.]
 
 do_save = [False, True][0]
 
@@ -113,8 +103,7 @@ for k in lab_keys:
     params[k] = lab_params[k]
 
 #Load simulator class
-sim = diffraq.Simulator(params)
-sim.setup_sim()
+sim = BDW(params)
 
 #Get diffraction and convert to intensity
 sim_img = np.abs(sim.calculate_diffraction())**2
@@ -127,6 +116,7 @@ sim_img = np.abs(sim.calculate_diffraction())**2
 
 #Pad image if needed
 if sim_img.shape != lab_img.shape:
+    print('pad')
     sim_img = image_util.pad_array(sim_img, NN=lab_img.shape[-1])
 
 ############################################
@@ -249,6 +239,6 @@ plt.plot(lab_img[lab_img.shape[-1]//2])
 plt.plot(sim_img[sim_img.shape[-1]//2])
 
 if do_save:
-    fig.savefig(f'./Plots/x{frac_cen[0]*10:.0f}_y{frac_cen[1]*10:.0f}__{mask_type}.png')
+    fig.savefig(f'./Plots/x{frac_cen[0]*10:.0f}_y{frac_cen[1]*10:.0f}.png')
 else:
     breakpoint()

@@ -17,11 +17,14 @@ import time
 import os
 import diffraq
 from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.ndimage import affine_transform
 
 class Simulator(object):
 
     def __init__(self, params={}):
         self.set_parameters(params)
+        #Load focuser
+        self.focuser = diffraq.Focuser(self)
 
 ############################################
 ####    Initialization ####
@@ -41,6 +44,11 @@ class Simulator(object):
             'tel_shift':        [0,0],          #(x,y) shift of telescope relative to starshade-source line [m]
             'with_spiders':     False,          #Superimpose secondary mirror spiders on pupil image?
             'skip_mask':        False,          #Skip pupil mask entirely
+            ### Pupil Image ###
+            'with_image':       False,          #Calculate pupil image?
+            'focal_length':     0.5,            #Focal length of telescope [m]
+            'pupil_mag':        0.5,            #Magnification of pupil image
+            'wfe_modes':        None,           #Wavefront Error Zernike modes. [(noll index, amplitude)]
             ### Starshade ###
             'apod_name':        'lab_ss',       #Apodization profile name. Options: ['lab_ss', 'circle']
             'num_petals':       12,             #Number of starshade petals
@@ -82,9 +90,13 @@ class Simulator(object):
         self.num_pts = 2*self.image_pad + self.num_tel_pts
 
         #Aperture points
-        self.tel_pts = self.get_grid_points(self.num_pts, width=self.tel_diameter)
+        self.image_width = self.tel_diameter * \
+            (1. + 2.*self.image_pad / self.num_tel_pts)
+        self.tel_pts = diffraq.image_util.get_grid_points(self.num_pts, \
+            width=self.image_width)
 
     def setup_sim(self):
+
         #Load pupil mask
         self.load_pupil_mask()
 
@@ -109,6 +121,9 @@ class Simulator(object):
 
         #Calculate diffraction
         Emap = self.calculate_diffraction()
+
+        #Propagate through focuser
+        image, grid_pts = self.focuser.calculate_image(Emap)
 
         #Store position
         self.tel_pts_x, self.tel_pts_y = self.tel_pts + np.array(self.tel_shift)[:,None]
@@ -211,7 +226,7 @@ class Simulator(object):
 
     def load_pupil_mask(self):
         #Load Roman Space Telescope pupil
-        if self.with_spiders and has_scipy:
+        if self.with_spiders:
             #Load Pupil Mask
             with h5py.File(f'{self.xtras_dir}/pupil_mask.h5', 'r') as f:
                 full_mask = f['mask'][()]
@@ -224,8 +239,8 @@ class Simulator(object):
                 output_shape=(self.num_pts, self.num_pts), order=5)
 
             #Mask out
-            self.pupil_mask[self.pupil_mask < 0] = 0
-            self.pupil_mask[self.pupil_mask > 1] = 1
+            self.pupil_mask[self.pupil_mask <  0.5] = 0
+            self.pupil_mask[self.pupil_mask >= 0.5] = 1
 
         elif self.skip_mask:
             #Don't have any mask
@@ -250,23 +265,6 @@ class Simulator(object):
 ############################################
 ####    Extras ####
 ############################################
-
-    def get_grid_points(self, ngrid, width=None, dx=None):
-        #Handle case for width supplied
-        if width is not None:
-            grid_pts = width*(np.arange(ngrid)/ngrid - 0.5)
-            dx = width/ngrid
-
-        #Handle case for spacing supplied
-        elif dx is not None:
-            grid_pts = dx*(np.arange(ngrid) - 0.5*ngrid)
-
-        #Handle the odd case
-        if ngrid % 2 == 1:
-            #Shift for odd points
-            grid_pts += dx/2
-
-        return grid_pts
 
     def save_data(self, Emap):
         if not self.do_save:

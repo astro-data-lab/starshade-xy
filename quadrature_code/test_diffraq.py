@@ -16,14 +16,15 @@ import diffraq
 from scipy.special import jn
 import h5py
 import os
+from diffraq import image_util
 
 class Test_Diffraq(object):
 
     def run_all_tests(self):
-        for tt in ['circle', 'starshade']:
+        for tt in ['circle', 'starshade', 'focuser']:
             getattr(self, f'test_{tt}')()
 
-    ############################################
+############################################
 
     def test_circle(self):
         #Intensity tolerance
@@ -55,7 +56,7 @@ class Test_Diffraq(object):
         sim = diffraq.Simulator(params)
 
         #Loop over shifts
-        for shift in [[0,0], [-3e-3, 0], [2e-3, -1.5e-3]][1:]:
+        for shift in [[0,0], [-3e-3, 0], [2e-3, -1.5e-3]]:
 
             #Loop over babinet
             for is_babinet in [False, True]:
@@ -76,7 +77,7 @@ class Test_Diffraq(object):
                 #Verify correct
                 assert(np.abs(asol - dsol).max()**2 < itol)
 
-    ############################################
+############################################
 
     def test_starshade(self):
         #Tolerance (amplitude)
@@ -118,6 +119,47 @@ class Test_Diffraq(object):
 
             #Assert true
             assert(np.abs(emap - cmap).max() < tol)
+
+############################################
+
+    def test_focuser(self):
+        waves = np.array([0.3e-6, 0.6e-6])
+
+        #Gaussian illumination on pupil
+        def gauss(num_pts, dx):
+            xx = image_util.get_grid_points(num_pts, dx=dx)
+            rr = np.hypot(xx, xx[:,None])
+            pupil = np.exp(-rr**2/xx.max()**2) + 0j
+            return pupil, xx
+
+        #Loop through wavelengths
+        for i in range(len(waves)):
+            #Loop through magnifications
+            for mag in [0.3, 2.]:
+
+                #Build simulator
+                sim = diffraq.Simulator({'wave':waves[i], 'pupil_mag':mag})
+
+                #Build gaussian pupil image
+                pupil, x0 = gauss(sim.num_pts, sim.focuser.dx0)
+
+                #Get images
+                image, grid_pts = sim.focuser.calculate_image(pupil)
+                dx = grid_pts[1] - grid_pts[0]
+
+                #Get new pupil (scaled gaussian)
+                pup2, x2 = gauss(sim.num_pts, dx)
+                pup2, dum = image_util.round_aperture(pup2)
+                pup2 = abs(pup2)**2
+
+                #Check sampling
+                assert(np.isclose(dx, sim.focuser.dx0*mag))
+
+                #Check if matches scaled gaussian
+                assert(np.allclose(pup2, image))
+
+        #Cleanup
+        del pupil, image, pup2, x0, x2, grid_pts
 
 ############################################
 ##### Circle Analytical Functions #####

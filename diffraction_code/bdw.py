@@ -260,9 +260,9 @@ class BDW(object):
                 output_shape=(self.num_pts, self.num_pts), order=5)
 
             #Mask out
-            self.pupil_mask[self.pupil_mask < 0] = 0
-            self.pupil_mask[self.pupil_mask > 1] = 1
-
+            self.pupil_mask[self.pupil_mask <  0.5] = 0
+            self.pupil_mask[self.pupil_mask >= 0.5] = 1
+            
         elif self.skip_mask:
             #Don't have any mask
             self.pupil_mask = np.ones((self.num_pts, self.num_pts))

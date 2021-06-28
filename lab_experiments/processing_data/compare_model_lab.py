@@ -22,7 +22,7 @@ diffraq = imp.load_source("diffraq", os.path.join(diff_dir,"diffraq","__init__.p
 import image_util
 
 session = 'run__6_01_21'
-run = 'data_2s_bin1'
+run = 'data_1s_bin1'
 mask_type = ['spiders', 'round', 'none'][0]
 is_med = True
 

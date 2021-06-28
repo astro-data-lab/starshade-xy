@@ -1,8 +1,8 @@
 import numpy as np
 import h5py
 import os
-import imp
 import image_util
+import imp
 
 #Import diffraq
 diff_dir = os.path.join(os.pardir, os.pardir, "quadrature_code")

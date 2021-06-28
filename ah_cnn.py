@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import torch
@@ -17,6 +16,7 @@ gamma = 0.8
 
 
 class StarshadeDataset(Dataset):
+    
     def __init__(self, data_dir, root_name, transform=None):
         self.root_dir = f'{data_dir}/{root_name}'
         self.root_name = root_name
@@ -37,12 +37,15 @@ class StarshadeDataset(Dataset):
         xy = self.shifts[idx, 1:].astype(np.float32)
         xy *= 1000
 
+        import matplotlib.pyplot as plt;plt.ion()
+        plt.imshow(image)
+        breakpoint()
+
         if self.transform:
             image = self.transform(image)
 
         sample = {'image': image, 'xy': xy}
         return sample
-
 
 class CNN(nn.Module):
     def __init__(self):
@@ -93,7 +96,7 @@ def test(model, testloader):
 def main():
 
     #Saving
-    save_name = 'test'
+    save_name = 'test_2'
 
     #Training
     train_run = 'trainset'

@@ -78,7 +78,7 @@ class Noise_Maker(object):
 
     def run_script(self):
         #Get peak count estimate from SNR
-        peak_cnts = self.get_counts_from_SNR(self.target_SNR)
+        peak_cnts, exp_time = self.get_counts_from_SNR(self.target_SNR)
 
         #Get all filenames
         self.image_files = glob.glob(f'{self.load_dir}/*{self.load_file_ext}')
@@ -122,16 +122,24 @@ class Noise_Maker(object):
             print(f'Adding noise to SNR: {snr}')
 
             #Get peak count estimate from SNR
-            peak_cnts = self.get_counts_from_SNR(snr)
+            peak_cnts, exp_time = self.get_counts_from_SNR(snr)
 
             #Loop through and process each image file
-            for i in range(len(self.image_files)):
+            for i in range(len(self.image_files))[:1]:
 
                 #Load image
                 img = np.load(self.image_files[i])
 
                 #Add noise to image
                 img = self.add_noise_to_image(img, peak_cnts)
+                import matplotlib.pyplot as plt;plt.ion()
+                plt.imshow(img)
+                # print(img.max(), peak_cnts, exp_time, peak_cnts/exp_time)
+                print(img.max() / exp_time)
+                breakpoint()
+
+                #Normalize by exposure time
+                img /= exp_time
 
                 #Save
                 if self.do_save:
@@ -175,7 +183,7 @@ class Noise_Maker(object):
         #Get peak counts to aim for
         peak_counts = self.count_rate * exp_time
 
-        return peak_counts
+        return peak_counts, exp_time
 
     def check_snr(self, img, texp):
         #Get radius of image around peak

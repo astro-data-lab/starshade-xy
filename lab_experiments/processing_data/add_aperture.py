@@ -23,13 +23,13 @@ from scipy.ndimage import affine_transform
 all_runs = ['data_1s_bin1', 'data_1s_bin2', 'data_1s_bin4']
 session = 'run__6_01_21'
 
-is_med = False
+is_med = True
 do_save = False
 
 #Mask type. Use 'none' for centroiding images
 mask_type = ['spiders', 'round', 'none'][1]
 
-do_plot = [False, True][0]
+do_plot = [False, True][1]
 
 #Base directory
 base_dir = '/home/aharness/Research/Frick_Lab/Data/FFNN'
@@ -72,6 +72,7 @@ for run in all_runs:
 
     #aperture size (from pupil magnification)
     Dtel = num_pts * 1.748*13e-6
+    # Dtel = num_pts * 1.764*13e-6
 
     #Read record
     data_dir = f'{base_dir}/{session}/{run}'
@@ -145,8 +146,6 @@ for run in all_runs:
     spiders = np.tile(spiders, (img0.shape[0], 1, 1))
     out_mask = np.tile(out_mask, (img0.shape[0], 1, 1))
 
-    ##################
-
     #Loop through steps and get images and exposure times + backgrounds
     imgs = np.empty((0,) + img_shp)
     locs = np.empty((0, 2))
@@ -217,6 +216,7 @@ for run in all_runs:
         ext = ['', '__median'][int(is_med)]
 
         with h5py.File(f'./Results/{session}__{run}__{mask_type}{ext}.h5', 'w') as f:
+            f.create_dataset('cal_value', data=cal_value)
             f.create_dataset('num_tel_pts', data=num_pts)
             f.create_dataset('base_num_pts', data=base_num_pts)
             f.create_dataset('binning', data=nbin)

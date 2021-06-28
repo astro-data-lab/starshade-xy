@@ -47,7 +47,7 @@ params = {
     'wave':             0.403e-6,       #Wavelength of light [m]
 
     ### Telescope ###
-    'tel_diameter':     2.181504e-3,    #Telescope aperture diameter [m]
+    'tel_diameter':     2.201472e-3,    #Telescope aperture diameter [m]
     'num_tel_pts':      96,             #Size of grid to calculate over pupil
     'with_spiders':     True,           #Superimpose spiders on pupil image?
 

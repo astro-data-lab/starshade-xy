@@ -238,7 +238,7 @@ class Simulator(object):
             self.pupil_mask = affine_transform(full_mask, affmat, \
                 output_shape=(self.num_pts, self.num_pts), order=5)
 
-            #Mask out
+            #Make binary
             self.pupil_mask[self.pupil_mask <  0.5] = 0
             self.pupil_mask[self.pupil_mask >= 0.5] = 1
 

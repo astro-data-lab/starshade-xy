@@ -10,6 +10,7 @@ Description: Script to add simulated detector noise to pre-calculated images.
 """
 
 from noise_maker import Noise_Maker
+import numpy as np
 
 base_name = 'testset'
 
@@ -20,9 +21,9 @@ params = {
         'base_name':            base_name,
         ### Saving ###
         'save_dir_base':        './Noisy_Data',
-        'do_save':              True,
+        'do_save':              False,
         ### Observation ###
-        'multi_SNRs':           [1,3,5,8,10],
+        'multi_SNRs':           np.arange(10) + 1,
 
 }
 

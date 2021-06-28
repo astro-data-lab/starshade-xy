@@ -27,7 +27,9 @@ mask_type = ['spiders', 'round', 'none'][0]
 is_med = True
 
 #Desired center (in fractions of tel_radius)
-frac_cen = [0., 0.5]
+# frac_cen = [0.65, -0.65] #1,2,37
+# frac_cen = [-0.15, 0.35] #1
+frac_cen = [1, 0] #1
 
 do_save = [False, True][0]
 
@@ -69,6 +71,8 @@ if mask_type == 'none':
     lab_params['num_tel_pts'] = lab_img.shape[-1]
     lab_params['image_pad'] = 0
 
+# breakpoint()
+
 #Add one pixel to match diffraq
 # pos0 += lab_params['tel_diameter']/lab_params['num_tel_pts']
 # pos0[0] -= lab_params['tel_diameter']/lab_params['num_tel_pts']
@@ -86,9 +90,7 @@ if mask_type == 'none':
 params = {
 
     ### Lab ###
-    'wave':             0.405e-6,
-    # 'wave':             0.412e-6,
-    # 'wave':             0.395e-6,
+    'wave':             0.403e-6,
 
     ### Telescope ###
     'with_spiders':     mask_type == 'spiders',
@@ -150,8 +152,11 @@ cen = (-pos0 / (sim.tel_pts[1] - sim.tel_pts[0]) + np.array(lab_img.shape)/2).as
 lab_sum = image_util.crop_image(lab_img, cen, dn).sum()
 sim_sum = image_util.crop_image(sim_img, cen, dn).sum()
 
-lab_img = image_util.round_aperture(lab_img, dr=15)
-sim_img = image_util.round_aperture(sim_img, dr=15)
+# lab_sum = 0.8226
+# sim_sum = 3.32e-3 * 1.4
+# lab_sum = lab_img.max()
+# sim_sum = sim_img.max()
+
 
 lab_img /= lab_sum
 sim_img /= sim_sum
@@ -163,12 +168,11 @@ lab_img /= lab_img.max()
 res1 = (lab_img - sim_img)*100
 
 #Round apertures
-res1 = image_util.round_aperture(res1, dr=15)
-res2 = image_util.round_aperture(res2, dr=15)
-
-# #convert to percentages
-# res1 *= 100 / (lab_img.max() / lab_sum)
-# res2 *= 100 / (lab_img.max() / lab_sum)
+if mask_type == 'none':
+    lab_img = image_util.round_aperture(lab_img, dr=15)
+    sim_img = image_util.round_aperture(sim_img, dr=15)
+    res1 = image_util.round_aperture(res1, dr=15)
+    res2 = image_util.round_aperture(res2, dr=15)
 
 #Plot
 if [False, True][0]:
@@ -179,37 +183,6 @@ if [False, True][0]:
     axes[1].set_title('Sim')
     plt.colorbar(lp, ax=axes[0], orientation='horizontal')
     plt.colorbar(sp, ax=axes[1], orientation='horizontal')
-
-# rfig, raxes = plt.subplots(1, 2, figsize=(7, 5), sharex=True, sharey=True)
-# fres = raxes[0].imshow(res1)#, cmap=plt.cm.jet)
-# ares = raxes[1].imshow(abs(res1))#, cmap=plt.cm.jet)
-# raxes[0].set_title('Lab - Sim')# (peak norm)')
-# raxes[1].set_title('|Lab - Sim|')#' (peak norm)')
-# plt.colorbar(fres, ax=raxes[0], orientation='horizontal', label=f'% scaled by peak')
-# plt.colorbar(ares, ax=raxes[1], orientation='horizontal', label=f'% scaled by peak')
-#
-
-# rfig, raxes = plt.subplots(1, 2, figsize=(7, 5), sharex=True, sharey=True)
-# fres = raxes[0].imshow(res2)
-# ares = raxes[1].imshow(abs(res2))
-# raxes[0].set_title('Lab - Sim (mean norm)')
-# raxes[1].set_title('|Lab - Sim| (mean norm)')
-# plt.colorbar(fres, ax=raxes[0], orientation='horizontal')
-# plt.colorbar(ares, ax=raxes[1], orientation='horizontal')
-
-# vmax = (lab_img/lab_sum).max()
-
-# nfig, naxes = plt.subplots(2, 2, figsize=(7, 5), sharex=True, sharey=True)
-# ll = naxes[0,0].imshow(lab_img/lab_sum, vmax=vmax)
-# mm = naxes[0,1].imshow(sim_img/sim_sum, vmax=vmax)
-# fres = naxes[1,0].imshow(res1)
-# ares = naxes[1,1].imshow(abs(res1))
-# naxes[0,0].set_title('Lab')
-# naxes[0,1].set_title('Sim')
-# naxes[1,0].set_title('Lab - Sim')
-# naxes[1,1].set_title('|Lab - Sim|')
-# plt.colorbar(fres, ax=naxes[1,0], orientation='horizontal', label=f'% scaled by peak')
-# # plt.colorbar(ares, ax=raxes[1], orientation='horizontal', label=f'% scaled by peak')
 
 fig = plt.figure(1, figsize=(9,9))
 grid = ImageGrid(fig, 111,

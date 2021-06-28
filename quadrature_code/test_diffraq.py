@@ -96,8 +96,11 @@ class Test_Diffraq(object):
                 #Save images separately
                 if k.startswith('pupil'):
                     imgs[k] = f[k][()]
+                elif k == 'apod_name':
+                    #Fix string
+                    pms[k] = f[k][()].decode('utf-8')
                 else:
-                    pms[k]= f[k][()]
+                    pms[k] = f[k][()]
 
         #Add extra pms
         pms['do_save'] = False

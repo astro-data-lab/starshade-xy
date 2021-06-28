@@ -12,12 +12,25 @@ Description: Script to generate a number of pupil plane images stepping across
 
 import numpy as np
 import diffraq
+import os
 
 #Name of data file to save
-save_name = 'stepped_data'
+base_dir = './Data'
+# save_name = 'trainset'
+save_name = 'testset'
+
+#Create directory
+save_dir = f'{base_dir}/{save_name}'
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
+
+#Create new csv file
+csv_file = f'{save_dir}/{save_name}.csv'
+with open(csv_file, 'w') as f:
+    pass
 
 #Number of steps
-nsteps = 48
+nsteps = {'testset':3, 'trainset':10}[save_name]
 
 #Width of motion grid [m]
 width = 2.5e-3
@@ -31,10 +44,10 @@ rad = np.sqrt(2) / 2 * dstep
 #Specify simulation parameters
 params = {
     ### Lab ###
-    'wave':             0.405e-6,       #Wavelength of light [m]
+    'wave':             0.403e-6,       #Wavelength of light [m]
 
     ### Telescope ###
-    'tel_diameter':     2.2e-3,         #Telescope aperture diameter [m]
+    'tel_diameter':     2.181504e-3,    #Telescope aperture diameter [m]
     'num_tel_pts':      96,             #Size of grid to calculate over pupil
     'with_spiders':     True,           #Superimpose spiders on pupil image?
 
@@ -61,7 +74,7 @@ positions = np.empty((0, 2))
 #Loop over steps in each axis and calculate image
 i = 1
 for x in steps:
-    print(f'Running x step # {i // len(steps) + 1}')
+    print(f'Running x step # {i // len(steps) + 1} / {len(steps)}')
     for y in steps:
 
         #Set shift of telescope
@@ -72,8 +85,11 @@ for x in steps:
         #Get diffraction and convert to intensity
         img = np.abs(sim.calculate_diffraction())**2
 
+        #Number string
+        num_str = str(i).zfill(6)
+
         #Save and write position to csv
-        np.save(f'test/{str(i).zfill(4)}', img)
-        with open('test.csv', 'a') as f:
-            f.write(f'{str(i).zfill(4)}, {nx}, {ny}\n')
+        np.save(f'{save_dir}/{num_str}', img)
+        with open(csv_file, 'a') as f:
+            f.write(f'{num_str}, {nx}, {ny}\n')
         i += 1

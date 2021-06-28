@@ -11,7 +11,6 @@ Description: Script to add spiders and secondary to experimental images.
 
 import numpy as np
 import matplotlib.pyplot as plt;plt.ion()
-from astropy.io import fits
 import h5py
 import glob
 import image_util
@@ -85,6 +84,8 @@ class Experiment_Image_Processor(object):
 
         #Loop through and process multiple runs
         for run in self.all_runs:
+
+            print(f'Processing Run: {run}, Mask: {self.mask_type}...')
 
             #Process images
             imgs, locs, meta = self.process_images(run)

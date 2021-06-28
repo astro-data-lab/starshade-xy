@@ -11,7 +11,7 @@ Description: Script to estimate the true position of experimental images using
 """
 
 import numpy as np
-from other_sensor import Other_Sensor
+from truth_sensor import Truth_Sensor
 
 all_runs = ['data_1s_bin1', 'data_2s_bin1']
 session = 'run__6_01_21'
@@ -32,5 +32,5 @@ for run in all_runs:
         'sensing_method':   ['centroid', 'model'][1],
     }
 
-    sen = Other_Sensor(params)
+    sen = Truth_Sensor(params)
     sen.get_positions()

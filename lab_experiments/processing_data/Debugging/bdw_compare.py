@@ -6,7 +6,7 @@ import imp
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 #Import diffraq
-diff_dir = os.path.join(os.pardir, os.pardir, "diffraction_code")
+diff_dir = os.path.join(os.pardir, os.pardir, os.pardir, "diffraction_code")
 bdw = imp.load_source("bdw", os.path.join(diff_dir,"bdw.py"))
 from bdw import BDW
 import image_util

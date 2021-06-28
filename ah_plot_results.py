@@ -3,10 +3,11 @@ import matplotlib.pyplot as plt
 import h5py
 
 data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+model = 'newest'
 
 do_save = [False, True][0]
 
-with h5py.File(f'./Results/{data_run}.h5', 'r') as f:
+with h5py.File(f'./Results/{data_run}__{model}.h5', 'r') as f:
     xerr = f['xerr'][()]
     yerr = f['yerr'][()]
     positions = f['positions'][()]
@@ -15,12 +16,6 @@ dist = np.hypot(xerr, yerr)
 
 if not do_save:
     plt.ion()
-
-# plt.scatter(xerr, yerr, marker = '+')
-# plt.grid()
-# plt.title('Scatterplot of Errors (SNR = 3.5)')
-# plt.xlabel('Error in x (m)')
-# plt.ylabel('Error in y (m)')
 
 fig, axes = plt.subplots(1, figsize=(6,6))
 cbar = plt.colorbar(axes.scatter(positions[:,0]*1e3, positions[:,1]*1e3, c=dist, s=2))

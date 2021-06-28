@@ -17,7 +17,7 @@ import imp
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 #Import diffraq
-diff_dir = os.path.join(os.pardir, os.pardir, "quadrature_code")
+diff_dir = os.path.join(os.pardir, os.pardir, os.pardir, "quadrature_code")
 diffraq = imp.load_source("diffraq", os.path.join(diff_dir,"diffraq","__init__.py"))
 import image_util
 

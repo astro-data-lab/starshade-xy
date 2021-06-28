@@ -1,5 +1,5 @@
 """
-other_sensor.py
+truth_sensor.py
 
 Author: Anthony Harness
 Affiliation: Princeton University
@@ -17,7 +17,7 @@ from scipy.optimize import least_squares
 import time
 import matplotlib.pyplot as plt;plt.ion()
 
-class Other_Sensor(object):
+class Truth_Sensor(object):
 
     def __init__(self, params={}):
         self.set_parameters(params)
@@ -359,5 +359,5 @@ if __name__ == '__main__':
         'sensing_method':   'centroid',
     }
 
-    sen = Other_Sensor(params)
+    sen = Truth_Sensor(params)
     sen.get_positions()

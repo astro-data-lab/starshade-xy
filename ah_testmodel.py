@@ -10,10 +10,15 @@ import h5py
 
 do_save = [False, True][1]
 
-data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+# data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+#
+# model_name = 'newest'
+
+data_run = 'run__5_26_21__data_1s_bin1__spiders'
+
+model_name = 'noisy96_all'
 
 data_dir = './lab_experiments/processing_data/Results'
-model_name = 'test'
 
 #######################3
 
@@ -52,7 +57,7 @@ with torch.no_grad():
 
 
 if do_save:
-    with h5py.File(f'./Results/{data_run}.h5', 'w') as f:
+    with h5py.File(f'./Results/{data_run}__{model_name}.h5', 'w') as f:
         f.create_dataset('xerr', data=xerr)
         f.create_dataset('yerr', data=yerr)
         f.create_dataset('positions', data=positions)

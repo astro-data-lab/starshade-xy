@@ -5,7 +5,7 @@ import image_util
 import imp
 
 #Import diffraq
-diff_dir = os.path.join(os.pardir, os.pardir, "quadrature_code")
+diff_dir = os.path.join(os.pardir, os.pardir, os.pardir, "quadrature_code")
 diffraq = imp.load_source("diffraq", os.path.join(diff_dir,"diffraq","__init__.py"))
 
 ############################################

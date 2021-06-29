@@ -75,7 +75,7 @@ for base_name in ['trainset', 'testset']:
         pass
 
     #Loop over steps in each axis and calculate image
-    i = 1
+    i = 0
     for x in steps:
         print(f'Running x step # {i // len(steps) + 1} / {len(steps)}')
         for y in steps:

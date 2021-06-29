@@ -17,6 +17,8 @@ session = 'run__6_01_21'
 
 for run in runs:
 
+    print(f'\nProcessing Run: {run} ...')
+
     params = {
         'do_save':          True,
         'run':              run,

@@ -105,8 +105,6 @@ class Noise_Maker(object):
     ############################################
 
     def run_multiple_snr_script(self):
-        #Get all filenames
-        self.image_files = glob.glob(f'{self.load_dir}/*{self.load_file_ext}')
 
         #Save info
         if self.do_save:
@@ -118,6 +116,9 @@ class Noise_Maker(object):
 
         #Get all shifts
         shifts = np.genfromtxt(f'{self.load_dir}/{self.base_name}.csv', delimiter=',')
+
+        #Number of images
+        num_imgs = len(shifts)
 
         #Open csv file
         if self.do_save:
@@ -135,10 +136,10 @@ class Noise_Maker(object):
             peak_cnts, exp_time = self.get_counts_from_SNR(snr)
 
             #Loop through and process each image file
-            for i in range(len(self.image_files)):
+            for i in range(num_imgs):
 
                 #Load image
-                img = np.load(self.image_files[i])
+                img = np.load(f'{self.load_dir}/{str(i).zfill(6)}.npy')
 
                 #Add noise to image
                 img = self.add_noise_to_image(img, peak_cnts)

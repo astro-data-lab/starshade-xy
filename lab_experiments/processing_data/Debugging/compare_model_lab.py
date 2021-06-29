@@ -27,7 +27,7 @@ mask_type = ['spiders', 'round', 'none'][0]
 is_med = True
 
 #Desired center (in fractions of tel_radius)
-# frac_cen = [0.65, -0.65] #1,2,37
+# frac_cen = [0.65, 0.65] #1,2,37
 # frac_cen = [-0.15, 0.35] #1
 frac_cen = [1, 0] #1
 
@@ -43,16 +43,14 @@ if not do_save:
 lab_keys = ['num_tel_pts', 'tel_diameter', 'image_pad']
 lab_params = {}
 
-#Get truth positions
-tru_name = f'{session}__{run}__none{["", "__median"][int(is_med)]}'
-with h5py.File(f'./Truth_Results/{tru_name}__truth_model.h5', 'r') as f:
-    tru_pos = f['truth'][()]
-
 #Load lab data
 lab_name = f'{session}__{run}__{mask_type}{["", "__median"][int(is_med)]}'
-with h5py.File(f'./Results/{lab_name}.h5', 'r') as f:
+with h5py.File(f'../Results/{lab_name}.h5', 'r') as f:
     #get center
     cen = np.array(frac_cen) * f['tel_diameter']/2
+
+    #Positions
+    tru_pos = f['positions'][()]
 
     #Find image closest to specified point
     ind0 = np.argmin(np.hypot(*(tru_pos - cen).T))

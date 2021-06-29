@@ -12,6 +12,8 @@ Description: Script to add simulated detector noise to pre-calculated images.
 from noise_maker import Noise_Maker
 import numpy as np
 
+snrs = np.concatenate((np.arange(0.15, 1, 0.2), np.arange(1,6)))
+
 for base_name in ['trainset', 'testset']:
 
     print(f'\nRunning {base_name} ...')
@@ -26,7 +28,7 @@ for base_name in ['trainset', 'testset']:
             'do_save':              True,
             ### Observation ###
             'count_rate':           200,
-            'multi_SNRs':           np.arange(10) + 1,
+            'multi_SNRs':           snrs,
 
     }
 

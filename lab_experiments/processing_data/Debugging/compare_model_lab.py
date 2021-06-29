@@ -28,8 +28,8 @@ is_med = True
 
 #Desired center (in fractions of tel_radius)
 # frac_cen = [0.65, 0.65] #1,2,37
-# frac_cen = [-0.15, 0.35] #1
-frac_cen = [1, 0] #1
+frac_cen = [-0.15, 0.35] #1
+# frac_cen = [1, 0] #1
 
 do_save = [False, True][0]
 
@@ -69,7 +69,10 @@ if mask_type == 'none':
     lab_params['num_tel_pts'] = lab_img.shape[-1]
     lab_params['image_pad'] = 0
 
-# breakpoint()
+#Flat field
+with h5py.File('../flat.h5', 'r') as f:
+    flat = f['data'][()]
+lab_img /= flat
 
 #Add one pixel to match diffraq
 # pos0 += lab_params['tel_diameter']/lab_params['num_tel_pts']
@@ -98,7 +101,7 @@ params = {
     # 'pupil_mag':        0.575,
 
     ### Starshade ###
-    'apod_name':        'lab_ss',
+    'apod_name':        'm12p8',
     # 'circle_rad':       25.054e-3,
     'num_petals':       12,
 
@@ -215,9 +218,9 @@ cbar3 = plt.colorbar(ff, cax=grid[2].cax, orientation=orien, label=f'% Error')
 cbar4 = plt.colorbar(aa, cax=grid[3].cax, orientation=orien, label=f'% Error')
 
 
-plt.figure()
-plt.plot(lab_img[lab_img.shape[-1]//2])
-plt.plot(sim_img[sim_img.shape[-1]//2])
+# plt.figure()
+# plt.plot(lab_img[lab_img.shape[-1]//2])
+# plt.plot(sim_img[sim_img.shape[-1]//2])
 
 if do_save:
     fig.savefig(f'./Plots/x{frac_cen[0]*10:.0f}_y{frac_cen[1]*10:.0f}__{mask_type}.png')

@@ -5,5 +5,4 @@ __pycache__/
  
 # Ignoring data files (too large)
 Results/*
-#data/*
-#noisy_data/*
+Plots/*

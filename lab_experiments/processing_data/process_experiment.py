@@ -12,15 +12,19 @@ Description: Process experimental images.
 import numpy as np
 from experiment_image_processor import Experiment_Image_Processor
 
-params = {
-    'all_runs':     ['data_1s_bin1'],
-    'session':      'run__6_01_21',
-    'is_med':       True,
-    'mask_type':    'spiders',
-}
+runs = ['data_1s_bin1']
+session = 'run__6_01_21'
 
-for mask in ['spiders', 'none', 'round'][:2]:
-    
-    params['mask_type'] = mask
+for run in runs:
+
+    params = {
+        'do_save':          True,
+        'run':              run,
+        'session':          session,
+        'is_med':           True,
+        'save_dir':         './Results',
+
+    }
+
     proc = Experiment_Image_Processor(params)
     proc.run_script()

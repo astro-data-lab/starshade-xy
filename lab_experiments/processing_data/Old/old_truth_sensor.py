@@ -3,7 +3,7 @@ truth_sensor.py
 
 Author: Anthony Harness
 Affiliation: Princeton University
-Created on: 06-28-2021
+Created on: 05-04-2021
 
 Description: Class that holds functions to extract the position from a pupil image
     via other means such as centroiding or non-linear least squares fit to a model.
@@ -11,33 +11,76 @@ Description: Class that holds functions to extract the position from a pupil ima
 """
 
 import numpy as np
+import h5py
 from scipy.special import j0, j1
 from scipy.optimize import least_squares
+import time
+import matplotlib.pyplot as plt;plt.ion()
 
 class Truth_Sensor(object):
 
-    def __init__(self, parent):
-        self.parent = parent
-        self.setup()
+    def __init__(self, params={}):
+        self.set_parameters(params)
+
+    def set_parameters(self, params):
+        def_pms = {
+            ### Loading / Saving ###
+            'image_file':       '',
+            'debug':            False,
+            'do_save':          False,
+            'save_dir':         './Truth_Results',
+            ### Sensing ###
+            'sensing_method':   'model',        #Options: ['model', 'centroid']
+            'cen_threshold':    0.75,           #Centroiding threshold
+            ### Laboratory ###
+            'wave':             405e-9,
+            'ss_radius':        10.1e-3*np.sqrt(680/638),
+            'z0':               27.455,
+            'z1':               50.,
+            'mask':             'none',         #Add spider masks in future
+            'ccd_dark':         7e-4,           #Dark noise [e/px/s]
+            'ccd_read':         3.20,           #Read noise [e/px/frame]
+            'ccd_cic':          0.0025,         #CIC noise [e/px/frame]
+            'ccd_gain':         0.768,          #inverse gain [ct/e]
+        }
+
+        #Set default parameters
+        for k, v in def_pms.items():
+            setattr(self, k, v)
+
+        #Set user-specified parameters (if valid name)
+        for k, v in params.items():
+            if k not in def_pms.keys():
+                print(f'\n!!! Bad parameter name: {k} !!!\n')
+                breakpoint()
+            else:
+                setattr(self, k, v)
+                #Update defaults
+                def_pms[k] = v
+
+        #Store
+        self.params = def_pms
 
 ############################################
 #####  Setup #####
 ############################################
 
     def setup(self):
-        #Copy over commonly shared
-        keys = ['binning', 'cen_threshold', 'ccd_dark', 'ccd_cic', \
-            'ccd_read', 'ccd_gain']
-        for k in keys:
-            setattr(self, k, getattr(self.parent, k))
+        #Load data
+        keys = ['num_tel_pts', 'image_pad', 'tel_diameter', 'positions', \
+            'base_num_pts', 'binning', 'meta']
+        with h5py.File(self.image_file, 'r') as f:
+            for k in keys:
+                setattr(self, k, f[k][()])
+            self.img_shp = f['images'].shape[-2:]
 
         #Pupil magnification [m/pixel]
-        self.pupil_mag = self.parent.tel_diameter / self.parent.base_num_pts
+        self.pupil_mag = self.tel_diameter / self.base_num_pts
 
         #Get position arrays
-        cen = np.array(self.parent.img_shape)/2
-        self.yy, self.xx = (np.indices(self.parent.img_shape).T + cen[::-1] - \
-            np.array(self.parent.img_shape)).T
+        cen = np.array(self.img_shp)/2
+        self.yy, self.xx = (np.indices(self.img_shp).T + cen[::-1] - \
+            np.array(self.img_shp)).T
 
         #Flip to match image
         self.yy = self.yy[::-1,::-1]
@@ -48,44 +91,71 @@ class Truth_Sensor(object):
         self.yy = self.yy.flatten() * self.binning
 
         #wavenumber * radius * z [in pixel units]
-        self.kRz = 2.*np.pi/self.parent.wave * self.parent.ss_radius * \
-            self.pupil_mag / self.parent.z1
+        self.kRz = 2.*np.pi/self.wave * self.ss_radius * self.pupil_mag / self.z1
 
-        #Sense position
-        if self.parent.sensing_method == 'model':
-            self.sense_func = self.sense_model
-        else:
-            self.sense_func = self.sense_centroid
+    def load_image(self, i):
+        with h5py.File(self.image_file, 'r') as f:
+            img = f['images'][i]
+        return img
 
 ############################################
 ############################################
 
 ############################################
-####	Main Function ####
+####	Main Script ####
 ############################################
 
-    def get_position(self, img, exp_time, pos0):
-        #Get image error
-        det_var = self.ccd_dark*exp_time + self.ccd_cic**2. + \
-            self.ccd_read**2.
+    def get_positions(self):
 
-        #Take median image (if not already done)
-        if img.ndim == 3:
-            img = np.median(img, 0)
+        print('\nGetting Truth Values...')
+        tik = time.perf_counter()
 
-        #Get true position
-        tru, err, is_good = self.sense_func(img, det_var, pos0)
+        #Run setup
+        self.setup()
 
-        #Debug
-        if [False, True][0]:
-            self.show_plot(img, pos0, tru)
+        #Loop through images and calculate true positions
+        truth = np.empty((0,2))
+        errs = np.empty((0,2))
+        flags = np.array([])
+        for i in range(len(self.meta)):
 
-        #Check flag
-        if not is_good:
-            print('\n!Bad Truth Position!\n')
+            #Get current image
+            img = self.load_image(i)
+
+            #Get image error
+            det_var = self.ccd_dark*self.meta[i][0] + self.ccd_cic**2. + \
+                self.ccd_read**2.
+
+            #Get initial guess
+            pos0 = self.positions[i]
+
+            #Sense position
+            if self.sensing_method == 'model':
+                tru, err, is_good = self.sense_model(img, det_var, pos0)
+            else:
+                tru, err, is_good = self.sense_centroid(img, det_var, pos0)
+
+            #Debugging plot
+            if self.debug:
+                self.show_plot(img, pos0, tru)
+
+            #Append
+            truth = np.concatenate((truth, [tru]))
+            errs = np.concatenate((errs, [err]))
+            flags = np.concatenate((flags, [is_good]))
+
+        tok = time.perf_counter()
+        print(f'Done! Time: {tok-tik:.1f} [s]\n')
+
+        #Save data
+        if self.do_save:
             breakpoint()
-
-        return tru
+            save_file = self.image_file.split('.h5')[0].split('/')[-1] + \
+                f'__truth_{self.sensing_method}.h5'
+            with h5py.File(f'{self.save_dir}/{save_file}', 'w') as f:
+                f.create_dataset('truth', data=truth)
+                f.create_dataset('errs', data=errs)
+                f.create_dataset('flags', data=flags)
 
 ############################################
 ############################################
@@ -95,6 +165,7 @@ class Truth_Sensor(object):
 ############################################
 
     def off_rad(self, off):
+        #TODO: add ap mask
         return np.sqrt((self.xx - off[0])**2. + (self.yy - off[1])**2.)
 
     def errfunc(self, pp, yy, ee):
@@ -113,6 +184,7 @@ class Truth_Sensor(object):
     def jacfunc(self, pp, yy, ee):
         """Jacobian"""
         rr = self.off_rad(pp[:2])
+        #TODO: add ap_mask to self.xx, self.yy
         #Get rid of zeros to prevent divide by zero in jacobian
         rr[rr == 0.] = 1e-12
         dfda = j0(self.kRz*rr)**2. / ee
@@ -126,6 +198,9 @@ class Truth_Sensor(object):
 
         #Flatten image and add gain
         img = in_img.flatten() * self.ccd_gain
+
+        #Cropped image to exclude aperture mask
+        # img = in_img[self.ap_mask]    #TODO: add aperture mask
 
         #Zero out negative values
         img[img < 0.] = 0.
@@ -168,6 +243,9 @@ class Truth_Sensor(object):
         #Values to return
         pos = ans[:-1]
         err = np.sqrt(cov.diagonal()[:2])
+
+        #Scale errs for when there is a pupil mask #TODO: kluge
+        # errs *= self.obscur_frac**2
 
         #Convert to physical units [m]
         pos *= self.pupil_mag
@@ -252,7 +330,6 @@ class Truth_Sensor(object):
 ############################################
 
     def show_plot(self, img, pos0, pos):
-        import matplotlib.pyplot as plt;plt.ion()
         print(np.hypot(*(pos0 - pos)))
         #Get image extent
         img_extent = [self.xx[0]*self.pupil_mag, \
@@ -261,7 +338,7 @@ class Truth_Sensor(object):
             self.yy[0]*self.pupil_mag]
 
         plt.cla()
-        plt.imshow(img, extent=img_extent)
+        plt.imshow(img.reshape(self.img_shp), extent=img_extent)
         plt.plot(pos[0], pos[1], 'rs')
         plt.plot(pos0[0], pos0[1], 'kx')
         plt.show()
@@ -269,3 +346,17 @@ class Truth_Sensor(object):
 
 ############################################
 ############################################
+
+if __name__ == '__main__':
+
+    params = {
+        # 'image_file':       './Results/data_20s_bin4__none__median.h5',
+        # 'image_file':       './Results/data_20s_bin4__none__median.h5',
+        'image_file':       './Old/Results/data_30s_bin1__none__median.h5',
+        'debug':            [False, True][1],
+        'do_save':          [False, True][0],
+        'sensing_method':   'centroid',
+    }
+
+    sen = Truth_Sensor(params)
+    sen.get_positions()

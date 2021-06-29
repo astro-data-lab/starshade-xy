@@ -14,9 +14,11 @@ lr = 1e-3
 num_epochs = 15
 gamma = 0.8
 
+#Normalization (close to peak suppression / dist_scaling^2)
+normalization = 0.03
 
 class StarshadeDataset(Dataset):
-    
+
     def __init__(self, data_dir, root_name, transform=None):
         self.root_dir = f'{data_dir}/{root_name}'
         self.root_name = root_name
@@ -32,14 +34,10 @@ class StarshadeDataset(Dataset):
 
         img_path = os.path.join(self.root_dir, str(idx).zfill(6) + '.npy')
         image = np.load(img_path).astype('float32')
-        image = image / np.amax(image)
+        image /= normalization
 
         xy = self.shifts[idx, 1:].astype(np.float32)
         xy *= 1000
-
-        import matplotlib.pyplot as plt;plt.ion()
-        plt.imshow(image)
-        breakpoint()
 
         if self.transform:
             image = self.transform(image)
@@ -96,7 +94,7 @@ def test(model, testloader):
 def main():
 
     #Saving
-    save_name = 'test_2'
+    save_name = 'newest_2'
 
     #Training
     train_run = 'trainset'

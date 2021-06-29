@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import h5py
 
 data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
-model = 'newest'
+model = 'newest_2'
 
 do_save = [False, True][0]
 

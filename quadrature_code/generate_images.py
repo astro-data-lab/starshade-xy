@@ -14,82 +14,85 @@ import numpy as np
 import diffraq
 import os
 
-#Name of data file to save
+#Save directory
 base_dir = './Data'
-# save_name = 'trainset'
-save_name = 'testset'
 
-#Create directory
-save_dir = f'{base_dir}/{save_name}'
-if not os.path.exists(save_dir):
-    os.makedirs(save_dir)
+#Loop over training and testing
+for base_name in ['trainset', 'testset']:
 
-#Create new csv file
-csv_file = f'{save_dir}/{save_name}.csv'
-with open(csv_file, 'w') as f:
-    pass
+    print(f'\nRunning {base_name} ...')
 
-#Number of steps
-nsteps = {'testset':3, 'trainset':10}[save_name]
+    #Create directory
+    save_dir = f'{base_dir}/{base_name}'
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
-#Width of motion grid [m]
-width = 2.5e-3
+    #Number of steps
+    nsteps = {'testset':20, 'trainset':50}[base_name]
 
-#Spacing between position steps [m]
-dstep = width / nsteps
+    #Width of motion grid [m]
+    width = 2.5e-3
 
-#Radius of random perturbations [m]
-rad = np.sqrt(2) / 2 * dstep
+    #Spacing between position steps [m]
+    dstep = width / nsteps
 
-#Specify simulation parameters
-params = {
-    ### Lab ###
-    'wave':             0.403e-6,       #Wavelength of light [m]
+    #Radius of random perturbations [m]
+    rad = np.sqrt(2) / 2 * dstep
 
-    ### Telescope ###
-    'tel_diameter':     2.201472e-3,    #Telescope aperture diameter [m]
-    'num_tel_pts':      96,             #Size of grid to calculate over pupil
-    'with_spiders':     True,           #Superimpose spiders on pupil image?
+    #Specify simulation parameters
+    params = {
+        ### Lab ###
+        'wave':             0.403e-6,       #Wavelength of light [m]
 
-    ### Starshade ###
-    'apod_name':        'lab_ss',       #Apodization profile name. Options: ['lab_ss', 'circle']
-    'num_petals':       12,             #Number of starshade petals
+        ### Telescope ###
+        'tel_diameter':     2.201472e-3,    #Telescope aperture diameter [m]
+        'num_tel_pts':      96,             #Size of grid to calculate over pupil
+        'with_spiders':     True,           #Superimpose spiders on pupil image?
 
-    ### Saving ###
-    'do_save':          False,          #Save data?
-    'verbose':          False,          #Print out details?
-}
+        ### Starshade ###
+        'apod_name':        'm12p8',       #Apodization profile name. Options: ['lab_ss', 'circle']
+        'num_petals':       12,             #Number of starshade petals
 
-#Load simulator
-sim = diffraq.Simulator(params)
-sim.setup_sim()
+        ### Saving ###
+        'do_save':          False,          #Don't save data
+        'verbose':          False,          #Silence output
+    }
 
-#Build steps
-steps = np.linspace(-width/2, width/2, num=nsteps)
+    #Load simulator
+    sim = diffraq.Simulator(params)
+    sim.setup_sim()
 
-#Containers
-images = np.empty((0, sim.num_pts, sim.num_pts))
-positions = np.empty((0, 2))
+    #Build steps
+    steps = np.linspace(-width/2, width/2, num=nsteps)
 
-#Loop over steps in each axis and calculate image
-i = 1
-for x in steps:
-    print(f'Running x step # {i // len(steps) + 1} / {len(steps)}')
-    for y in steps:
+    #Containers
+    images = np.empty((0, sim.num_pts, sim.num_pts))
+    positions = np.empty((0, 2))
 
-        #Set shift of telescope
-        nx = x + 2 * rad * (np.random.random_sample() - 0.5)
-        ny = y + 2 * rad * (np.random.random_sample() - 0.5)
-        sim.tel_shift = [nx, ny]
+    #Create new csv file
+    csv_file = f'{save_dir}/{base_name}.csv'
+    with open(csv_file, 'w') as f:
+        pass
 
-        #Get diffraction and convert to intensity
-        img = np.abs(sim.calculate_diffraction())**2
+    #Loop over steps in each axis and calculate image
+    i = 1
+    for x in steps:
+        print(f'Running x step # {i // len(steps) + 1} / {len(steps)}')
+        for y in steps:
 
-        #Number string
-        num_str = str(i).zfill(6)
+            #Set shift of telescope
+            nx = x + 2 * rad * (np.random.random_sample() - 0.5)
+            ny = y + 2 * rad * (np.random.random_sample() - 0.5)
+            sim.tel_shift = [nx, ny]
 
-        #Save and write position to csv
-        np.save(f'{save_dir}/{num_str}', img)
-        with open(csv_file, 'a') as f:
-            f.write(f'{num_str}, {nx}, {ny}\n')
-        i += 1
+            #Get diffraction and convert to intensity
+            img = np.abs(sim.calculate_diffraction())**2
+
+            #Number string
+            num_str = str(i).zfill(6)
+
+            #Save and write position to csv
+            np.save(f'{save_dir}/{num_str}', img)
+            with open(csv_file, 'a') as f:
+                f.write(f'{num_str}, {nx}, {ny}\n')
+            i += 1

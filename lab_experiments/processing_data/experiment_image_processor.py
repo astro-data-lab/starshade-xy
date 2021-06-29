@@ -10,17 +10,17 @@ Description: Script to add spiders and secondary to experimental images.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt;plt.ion()
 import h5py
-import glob
 import image_util
 import photo_functions as pfunc
 from scipy.ndimage import affine_transform
+from truth_sensor import Truth_Sensor
 
 class Experiment_Image_Processor(object):
 
     def __init__(self, params={}):
         self.set_parameters(params)
+        self.setup()
 
 ############################################
 ####    Initialization ####
@@ -33,17 +33,26 @@ class Experiment_Image_Processor(object):
             'base_dir':         '/home/aharness/Research/Frick_Lab/Data/FFNN',
             'xtras_dir':        '../../quadrature_code/xtras',
             'save_dir':         './Results',
-            'all_runs':         [],
+            'run':              '',
             'session':          '',
-            'is_med':           False,
-            'mask_type':        'none',
+            'do_round_mask':    True,
             ### Saving ###
             'do_save':          False,
             'do_plot':          False,
             ### Observation ###
+            'is_med':           False,
             'base_num_pts':     96,
             'image_pad':        10,
-            'binning':          1,
+            ### Truth Sensor ###
+            'sensing_method':   'model',        #Options: ['model', 'centroid']
+            'cen_threshold':    0.75,           #Centroiding threshold
+            'wave':             403e-9,
+            'ss_radius':        10.1e-3*np.sqrt(680/638),
+            'z1':               50.,
+            'ccd_dark':         7e-4,           #Dark noise [e/px/s]
+            'ccd_read':         3.20,           #Read noise [e/px/frame]
+            'ccd_cic':          0.0025,         #CIC noise [e/px/frame]
+            'ccd_gain':         0.768,          #inverse gain [ct/e]
         }
 
         #Set user and default parameters
@@ -57,12 +66,29 @@ class Experiment_Image_Processor(object):
             setattr(self, k, v)
 
         #Directories
-        self.load_dir = f'{self.base_dir}/{self.session}'
+        self.load_dir = f'{self.base_dir}/{self.session}/{self.run}'
+
+        #FIXED
+        pupil_mag = 1.764
+        pixel_size = 13e-6
+        self.num_pixel_base = 250
 
         #Derived
-        self.Dtel = self.base_num_pts * 1.764*13e-6
+        self.tel_diameter = self.base_num_pts * pupil_mag*pixel_size
+
+    def setup(self):
+
+        #Get image shape
+        img, dummy1, dummy2 = pfunc.load_image(f'{self.load_dir}/image__0001.fits')
+        self.num_kin = img.shape[0]
+        self.img_shape = img.shape[1:]
+
+        #Get binning
+        self.binning = int(np.round(self.num_pixel_base/self.img_shape[0]))
         self.num_pts = self.base_num_pts // self.binning
-        self.do_crop = self.mask_type != 'none'
+
+        #Load truth sensor
+        self.truth = Truth_Sensor(self)
 
 ############################################
 ############################################
@@ -76,44 +102,39 @@ class Experiment_Image_Processor(object):
         #Load calibration
         self.load_calibration()
 
-        #Peek at image data
-        self.peek_at_image()
+        #Load image record
+        self.record = np.genfromtxt(f'{self.load_dir}/record.csv', delimiter=',')
 
-        #Load pupil mask
-        self.load_pupil_mask()
+        #Prepare true position
+        self.true_position = np.empty((len(self.record),2))
 
-        #Loop through and process multiple runs
-        for run in self.all_runs:
+        #Run None mask
+        self.process_images('none')
 
-            print(f'Processing Run: {run}, Mask: {self.mask_type}...')
+        #Run spiders mask
+        self.process_images('spiders')
 
-            #Process images
-            imgs, locs, meta = self.process_images(run)
-
-            #Save data
-            if self.do_save:
-                self.save_data(run, imgs, locs, meta)
-
-            # breakpoint()
+        #Run round mask
+        if self.do_round_mask:
+            self.process_images('round')
 
     ############################################
 
-    def process_images(self, run):
+    def process_images(self, mask_type):
 
-        #Load image record
-        record = np.genfromtxt(f'{self.load_dir}/{run}/record.csv', delimiter=',')
+        #Load mask
+        pupil_mask, spiders, out_mask = self.load_pupil_mask(mask_type)
+        nspid = np.count_nonzero(spiders[0])
+        nout = np.count_nonzero(out_mask[0])
 
         #Loop through steps and get images and exposure times + backgrounds
         imgs = np.empty((0,) + self.img_shape)
         locs = np.empty((0, 2))
         meta = np.empty((0, 3))
-        for i in range(len(record)):
-
-            #Current position
-            pos = record[i][1:]
+        for i in range(len(self.record)):
 
             #Get image
-            img, exp = self.get_image(run, int(record[i][0]))
+            img, exp = self.get_image(int(self.record[i][0]))
 
             #Get excess regions
             nbk = 40//self.binning
@@ -121,11 +142,11 @@ class Experiment_Image_Processor(object):
                 img[:,-nbk:,:nbk], img[:,-nbk:,-nbk:])).flatten()
 
             #Add mask
-            img *= self.pupil_mask
+            img *= pupil_mask
 
             #Add noise in spiders and outside aperture
-            img[self.spiders] = np.random.choice(excess, (img.shape[0], self.nspid)).flatten()
-            img[self.out_mask] = np.random.choice(excess, (img.shape[0], self.nout)).flatten()
+            img[spiders] = np.random.choice(excess, (img.shape[0], nspid)).flatten()
+            img[out_mask] = np.random.choice(excess, (img.shape[0], nout)).flatten()
 
             #Subtract background
             back = np.median(excess)
@@ -138,14 +159,27 @@ class Experiment_Image_Processor(object):
             else:
                 nframe = 1
 
+            #Get current position
+            if mask_type == 'none':
+                #Position guess (flip x-sign b/c optics)
+                pos0 = self.record[i][1:] * np.array([-1, 1])
+                #Get true position
+                pos = self.truth.get_position(img, exp, pos0)
+                #Save
+                self.true_position[i] = pos
+            else:
+                #Get stored true position
+                pos = self.true_position[i]
+
             #Plot
             if self.do_plot:
+                import matplotlib.pyplot as plt;plt.ion()
                 print(i, pos*1e3)
                 for j in range(img.shape[0]):
                     plt.cla()
                     cimg = image_util.crop_image(img[j], None, self.num_pts//2+self.image_pad)
                     plt.imshow(cimg)
-                    print(self.num_pts, cimg.shape)
+                    print(cimg.max())
                     breakpoint()
 
             #Store images + positions
@@ -155,13 +189,12 @@ class Experiment_Image_Processor(object):
             meta = np.concatenate((meta, [[exp, back, nframe]]*img.shape[0]))
 
         #Trim images
-        if self.do_crop:
+        if mask_type != 'none':
             imgs = image_util.crop_image(imgs, None, self.num_pts//2+self.image_pad)
 
-        #Flip sign of x-coord b/c optics
-        locs[:,0] *= -1
-
-        return imgs, locs, meta
+        #Save Data
+        if self.do_save:
+            self.save_data(mask_type, imgs, locs, meta)
 
 ############################################
 
@@ -169,49 +202,53 @@ class Experiment_Image_Processor(object):
 ####    Misc Functions ####
 ############################################
 
-    def peek_at_image(self):
-        img, exp = self.get_image(self.all_runs[0], 1)
-        self.num_kin = img.shape[0]
-        self.img_shape = img.shape[1:]
-
     def load_calibration(self):
 
         #Get photometer data
-        self.photo_data = pfunc.load_photometer_data(f'{self.load_dir}', None)
+        cal_dir = self.load_dir.split(self.run)[0]
+        self.photo_data = pfunc.load_photometer_data(cal_dir, None)
 
         #Load calibration data
-        fname = f'{self.load_dir}/cal_con.fits'
+        fname = f'{cal_dir}/cal_sup.fits'
         cimg, cexp, cpho = pfunc.get_image_data(fname, self.photo_data)
 
-        #Crop
-        max_pt = np.unravel_index(np.argmax(cimg[0]), cimg.shape[1:])[::-1]
-        cimg = image_util.crop_image(cimg, max_pt, 50)
+        #Kluge for 6_1_21 b/c overexposed data
+        if self.session == 'run__6_01_21':
+            cimg /= 0.88
+
+        #Subtract background
+        cimg -= np.median(cimg)
 
         #Get normalized median
         med = np.median(cimg / cpho[:,None,None], 0)
 
-        #Get peak from max
-        self.cal_value = med.max()
+        #Threshold image
+        med[med < med.mean()] = 0
 
-    def get_image(self, run, inum):
+        #Get calibration value from mean suppression (should equal diverging beam factor**2)
+        self.cal_value = med[med != 0].mean()
+
+    def get_image(self, inum):
         #Get data
-        fname = f'{self.load_dir}/{run}/image__{str(inum).zfill(4)}.fits'
+        fname = f'{self.load_dir}/image__{str(inum).zfill(4)}.fits'
         img, exp, pho = pfunc.get_image_data(fname, self.photo_data)
-        #Normalize
+
+        #Normalize by photometer data and suppression mean (diverging beam factor**2)
         img /= pho[:,None,None] * self.cal_value
+
         return img, exp
 
-    def save_data(self, run, imgs, locs, meta):
+    def save_data(self, mask_type, imgs, locs, meta):
 
         ext = ['', '__median'][int(self.is_med)]
 
-        with h5py.File(f'{self.save_dir}/{self.session}__{run}__{self.mask_type}{ext}.h5', 'w') as f:
+        with h5py.File(f'{self.save_dir}/{self.session}__{self.run}__{mask_type}{ext}.h5', 'w') as f:
             f.create_dataset('cal_value', data=self.cal_value)
             f.create_dataset('num_tel_pts', data=self.num_pts)
             f.create_dataset('base_num_pts', data=self.base_num_pts)
             f.create_dataset('binning', data=self.binning)
             f.create_dataset('image_pad', data=self.image_pad)
-            f.create_dataset('tel_diameter', data=self.Dtel)
+            f.create_dataset('tel_diameter', data=self.tel_diameter)
             f.create_dataset('meta', data=meta, compression=8)
             f.create_dataset('positions', data=locs, compression=8)
             f.create_dataset('images', data=imgs, compression=8)
@@ -223,10 +260,10 @@ class Experiment_Image_Processor(object):
 ####    Pupil Mask ####
 ############################################
 
-    def load_pupil_mask(self):
+    def load_pupil_mask(self, mask_type):
 
         #Use spider mask or just round aperture
-        if self.mask_type == 'spiders':
+        if mask_type == 'spiders':
             #Load Pupil Mask
             with h5py.File(f'{self.xtras_dir}/pupil_mask.h5', 'r') as f:
                 full_mask = f['mask'][()]
@@ -246,20 +283,16 @@ class Experiment_Image_Processor(object):
             rr = np.hypot(*(np.indices(self.img_shape) - self.img_shape[0]/2))
             spiders = (rr <= self.num_pts/2) & (pupil_mask == 0)
             out_mask = rr > self.num_pts/2
-            nspid = np.count_nonzero(spiders)
-            nout = np.count_nonzero(out_mask)
 
             del full_mask
 
-        elif self.mask_type == 'round':
+        elif mask_type == 'round':
 
             #Get indices of outside aperture
             rr = np.hypot(*(np.indices(self.img_shape) - self.img_shape[0]/2))
             out_mask = rr > self.num_pts/2
-            nout = np.count_nonzero(out_mask)
             #No spiders
             spiders = np.zeros(self.img_shape).astype(bool)
-            nspid = np.count_nonzero(spiders)
 
             #Just round aperture
             pupil_mask = np.ones(self.img_shape)
@@ -268,7 +301,6 @@ class Experiment_Image_Processor(object):
         else:
 
             #No mask
-            nout, nspid = 0, 0
             pupil_mask = np.ones(self.img_shape)
 
             out_mask = np.zeros(self.img_shape).astype(bool)
@@ -278,12 +310,7 @@ class Experiment_Image_Processor(object):
         spiders = np.tile(spiders, (self.num_kin, 1, 1))
         out_mask = np.tile(out_mask, (self.num_kin, 1, 1))
 
-        #Store
-        self.pupil_mask = pupil_mask
-        self.spiders = spiders
-        self.out_mask = out_mask
-        self.nspid = nspid
-        self.nout = nout
+        return pupil_mask, spiders, out_mask
 
 ############################################
 ############################################

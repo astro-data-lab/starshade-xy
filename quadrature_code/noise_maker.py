@@ -38,10 +38,12 @@ class Noise_Maker(object):
             ### Observation ###
             'target_SNR':       5,              #Target SNR of peak of diffraction pattern
             'multi_SNRs':       [],             #List of target SNR
-            'diff_peak':        3.31e-3,        #Peak of diffraction pattern from simulation calculation
-            'count_rate':       100,            #Expected counts/s of peak of diffraction pattern
-            'peak2mean':        0.67,           #Conversion from peak counts to mean counts in FWHM for J_0^2
-            'fwhm':             10,             #Full-width at half-maximum of J_0^2
+            'diff_peak':        3.615e-3,       #Peak of diffraction pattern from simulation calculation
+            'z1':               50.,            #Starshade - camera distance [m]
+            'z0':               27.455,         #Source - starshade distance [m]
+            'count_rate':       200,            #Expected counts/s of peak of diffraction pattern
+            'peak2mean':        0.68,           #Conversion from peak counts to mean counts in FWHM for J_0^2
+            'fwhm':             28,             #Full-width at half-maximum of J_0^2
             ### Detector ###
             'ccd_read':         3.20,           #Detector read noise [e-/pixel/frame]
             'ccd_gain':         0.768,          #Detector inverse-gain [e-/count]
@@ -68,6 +70,9 @@ class Noise_Maker(object):
         if self.do_save:
             if not os.path.exists(self.save_dir):
                 os.makedirs(self.save_dir)
+
+        #Diverging beam scaling
+        self.dist_scaling = (self.z0 / (self.z0 + self.z1))**2
 
 ############################################
 ############################################
@@ -97,6 +102,8 @@ class Noise_Maker(object):
                 save_name = img_file.split('/')[-1].split('.npy')[0]
                 np.save(f'{self.save_dir}/{save_name}', img)
 
+    ############################################
+
     def run_multiple_snr_script(self):
         #Get all filenames
         self.image_files = glob.glob(f'{self.load_dir}/*{self.load_file_ext}')
@@ -121,25 +128,23 @@ class Noise_Maker(object):
         for snr in self.multi_SNRs:
             print(f'Adding noise to SNR: {snr}')
 
+            #Just for debugging
+            self.target_SNR = snr
+
             #Get peak count estimate from SNR
             peak_cnts, exp_time = self.get_counts_from_SNR(snr)
 
             #Loop through and process each image file
-            for i in range(len(self.image_files))[:1]:
+            for i in range(len(self.image_files)):
 
                 #Load image
                 img = np.load(self.image_files[i])
 
                 #Add noise to image
                 img = self.add_noise_to_image(img, peak_cnts)
-                import matplotlib.pyplot as plt;plt.ion()
-                plt.imshow(img)
-                # print(img.max(), peak_cnts, exp_time, peak_cnts/exp_time)
-                print(img.max() / exp_time)
-                breakpoint()
 
-                #Normalize by exposure time
-                img /= exp_time
+                #Convert to suppression
+                img *= self.diff_peak / (self.count_rate * exp_time * self.dist_scaling)
 
                 #Save
                 if self.do_save:
@@ -243,7 +248,7 @@ class Noise_Maker(object):
         #Round to convert to counts
         img = np.round(img)
 
-        #Check SNR (uncomment)
+        ##Check SNR (uncomment)
         # self.check_snr(img, exp_time)
 
         #Remove bias

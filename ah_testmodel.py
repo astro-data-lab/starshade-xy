@@ -7,30 +7,35 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from ah_cnn import CNN, StarshadeDataset
 import h5py
+import atexit
 
 do_save = [False, True][1]
 
-# data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
-#
-# model_name = 'newest'
+data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
 
-data_run = 'run__5_26_21__data_1s_bin1__spiders'
-
-model_name = 'noisy96_all'
+model_name = 'newest_2'
 
 data_dir = './lab_experiments/processing_data/Results'
 
-#######################3
+#Normalization (close to peak suppression / dist_scaling^2)
+normalization = 0.03
 
-transform = transforms.Compose([transforms.ToTensor()])
+#######################
 
-testloader = h5py.File(f'{data_dir}/{data_run}.h5', 'r')
-images = testloader['images']
-positions = testloader['positions']
+#Open test data file
+test_loader = h5py.File(f'{data_dir}/{data_run}.h5', 'r')
+atexit.register(test_loader.close)
+#Get images and positions
+images = test_loader['images']
+positions = test_loader['positions']
 
+#Load model
 model = CNN()
 model.load_state_dict(torch.load(f'models/{model_name}.pt'))
 model.eval()
+
+#Transform
+transform = transforms.Compose([transforms.ToTensor()])
 
 ct = 0
 xerr = np.array([])
@@ -39,7 +44,8 @@ with torch.no_grad():
 
     for img, pos in zip(images, positions):
         img = img.astype('float32')
-        img = img / np.amax(img)
+        img /= normalization
+
         img = transform(img)
         img = torch.unsqueeze(img, 0)
         output = model(img)

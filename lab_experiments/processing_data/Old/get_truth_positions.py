@@ -13,12 +13,12 @@ Description: Script to estimate the true position of experimental images using
 import numpy as np
 from truth_sensor import Truth_Sensor
 
-all_runs = ['data_1s_bin1', 'data_2s_bin1']
+all_runs = ['data_1s_bin1', 'data_2s_bin1'][:1]
 session = 'run__6_01_21'
 
 is_med = True
-data_dir = './Results'
-true_dir = './Truth_Results'
+data_dir = './Test_Results'
+true_dir = './Test_Truth_Results'
 
 for run in all_runs:
 
@@ -26,8 +26,7 @@ for run in all_runs:
 
     params = {
         'image_file':       fname,
-        'debug':            [False, True][0],
-        'do_save':          [False, True][1],
+        'debug':          True,
         'save_dir':         true_dir,
         'sensing_method':   ['centroid', 'model'][1],
     }

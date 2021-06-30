@@ -36,7 +36,7 @@ class Experiment_Image_Processor(object):
             'save_dir':         './Results',
             'run':              '',
             'session':          '',
-            'do_round_mask':    True,
+            'do_round_mask':    False,
             ### Saving ###
             'do_save':          False,
             'do_plot':          False,
@@ -45,6 +45,7 @@ class Experiment_Image_Processor(object):
             'base_num_pts':     96,
             'image_pad':        10,
             ### Truth Sensor ###
+            'image_center':     None,
             'sensing_method':   'model',        #Options: ['model', 'centroid']
             'cen_threshold':    0.75,           #Centroiding threshold
             'wave':             403e-9,
@@ -195,6 +196,8 @@ class Experiment_Image_Processor(object):
         #Save Data
         if self.do_save:
             self.save_data(mask_type, imgs, locs, meta)
+            if mask_type == 'none':
+                self.save_truths()
 
         #End
         tok = time.perf_counter()
@@ -245,8 +248,9 @@ class Experiment_Image_Processor(object):
     def save_data(self, mask_type, imgs, locs, meta):
 
         ext = ['', '__median'][int(self.is_med)]
+        fname = f'{self.save_dir}/{self.session}__{self.run}__{mask_type}{ext}.h5'
 
-        with h5py.File(f'{self.save_dir}/{self.session}__{self.run}__{mask_type}{ext}.h5', 'w') as f:
+        with h5py.File(fname, 'w') as f:
             f.create_dataset('cal_value', data=self.cal_value)
             f.create_dataset('num_tel_pts', data=self.num_pts)
             f.create_dataset('base_num_pts', data=self.base_num_pts)
@@ -256,6 +260,18 @@ class Experiment_Image_Processor(object):
             f.create_dataset('meta', data=meta, compression=8)
             f.create_dataset('positions', data=locs, compression=8)
             f.create_dataset('images', data=imgs, compression=8)
+
+    def save_truths(self):
+        ext = ['', '__median'][int(self.is_med)]
+        fname = f'{self.save_dir}/truths__{self.session}__{self.run}{ext}.h5'
+        with h5py.File(fname, 'w') as f:
+            f.create_dataset('true_position', data=self.true_position)
+
+    def load_truths(self):
+        ext = ['', '__median'][int(self.is_med)]
+        fname = f'{self.save_dir}/truths__{self.session}__{self.run}{ext}.h5'
+        with h5py.File(fname, 'r') as f:
+            self.true_position = f['true_position'][()]
 
 ############################################
 ############################################

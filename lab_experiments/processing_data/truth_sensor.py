@@ -27,15 +27,20 @@ class Truth_Sensor(object):
     def setup(self):
         #Copy over commonly shared
         keys = ['binning', 'cen_threshold', 'ccd_dark', 'ccd_cic', \
-            'ccd_read', 'ccd_gain']
+            'ccd_read', 'ccd_gain', 'image_center']
         for k in keys:
             setattr(self, k, getattr(self.parent, k))
 
         #Pupil magnification [m/pixel]
         self.pupil_mag = self.parent.tel_diameter / self.parent.base_num_pts
 
+        #Define "center"
+        if self.image_center is None:
+            cen = np.array(self.parent.img_shape)/2
+        else:
+            cen = self.image_center
+
         #Get position arrays
-        cen = np.array(self.parent.img_shape)/2
         self.yy, self.xx = (np.indices(self.parent.img_shape).T + cen[::-1] - \
             np.array(self.parent.img_shape)).T
 

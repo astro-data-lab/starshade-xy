@@ -23,13 +23,13 @@ import image_util
 
 session = 'run__6_01_21'
 run = 'data_1s_bin1'
-mask_type = ['spiders', 'round', 'none'][0]
+mask_type = ['spiders', 'round', 'none'][2]
 is_med = True
 
 #Desired center (in fractions of tel_radius)
-# frac_cen = [0.65, 0.65] #1,2,37
-# frac_cen = [-0.15, 0.35] #1
-frac_cen = [1, 0] #1
+frac_cen = [0.65, 0.65]
+# frac_cen = [-0.15, 0.35]
+# frac_cen = [1, 0]
 
 do_save = [False, True][0]
 
@@ -69,19 +69,15 @@ if mask_type == 'none':
     lab_params['num_tel_pts'] = lab_img.shape[-1]
     lab_params['image_pad'] = 0
 
-#Flat field
-with h5py.File('../flat.h5', 'r') as f:
-    flat = f['data'][()]
-lab_img /= flat
+# #Flat field
+# with h5py.File('../flat.h5', 'r') as f:
+#     flat = f['data'][()]
+# lab_img /= flat
 
 #Add one pixel to match diffraq
-# pos0 += lab_params['tel_diameter']/lab_params['num_tel_pts']
-# pos0[0] -= lab_params['tel_diameter']/lab_params['num_tel_pts']
+dx = lab_params['tel_diameter']/lab_params['num_tel_pts']
 
-# dx = lab_params['tel_diameter']/lab_params['num_tel_pts']
-
-# pos0[0] += dx
-# pos0[1] += dx*.25
+# pos0 += dx
 
 ############################################
 ####    Simulate Image ####
@@ -97,7 +93,7 @@ params = {
     'with_spiders':     mask_type == 'spiders',
     'skip_mask':        mask_type == 'none',
     'tel_shift':        pos0,
-    # 'wfe_modes':        [(1,1,-5e-7*0), (0,2,-5e-7)],
+    # 'wfe_modes':        [(1,1,-5e-6), (0,2,-5e-6)],
     # 'pupil_mag':        0.575,
 
     ### Starshade ###

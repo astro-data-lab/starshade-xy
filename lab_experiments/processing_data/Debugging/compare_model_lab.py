@@ -28,8 +28,8 @@ is_med = True
 
 #Desired center (in fractions of tel_radius)
 # frac_cen = [0.65, 0.65] #1,2,37
-frac_cen = [-0.15, 0.35] #1
-# frac_cen = [1, 0] #1
+# frac_cen = [-0.15, 0.35] #1
+frac_cen = [1, 0] #1
 
 do_save = [False, True][0]
 
@@ -101,6 +101,7 @@ params = {
     # 'pupil_mag':        0.575,
 
     ### Starshade ###
+    # 'apod_name':        'lab_ss',
     'apod_name':        'm12p8',
     # 'circle_rad':       25.054e-3,
     'num_petals':       12,

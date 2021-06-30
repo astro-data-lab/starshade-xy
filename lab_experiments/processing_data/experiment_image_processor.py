@@ -12,6 +12,7 @@ Description: Script to add spiders and secondary to experimental images.
 import numpy as np
 import h5py
 import image_util
+import time
 import photo_functions as pfunc
 from scipy.ndimage import affine_transform
 from truth_sensor import Truth_Sensor
@@ -122,10 +123,13 @@ class Experiment_Image_Processor(object):
 
     def process_images(self, mask_type):
 
+        #Startup
+        tik = time.perf_counter()
+        print(f'Running Mask: {mask_type}')
+
         #Load mask
-        pupil_mask, spiders, out_mask = self.load_pupil_mask(mask_type)
-        nspid = np.count_nonzero(spiders[0])
-        nout = np.count_nonzero(out_mask[0])
+        spiders = self.load_pupil_mask(mask_type)
+        nspid = np.count_nonzero(spiders)
 
         #Loop through steps and get images and exposure times + backgrounds
         imgs = np.empty((0,) + self.img_shape)
@@ -141,12 +145,8 @@ class Experiment_Image_Processor(object):
             excess = np.concatenate((img[:,:nbk,:nbk], img[:,:nbk,-nbk:], \
                 img[:,-nbk:,:nbk], img[:,-nbk:,-nbk:])).flatten()
 
-            #Add mask
-            img *= pupil_mask
-
             #Add noise in spiders and outside aperture
-            img[spiders] = np.random.choice(excess, (img.shape[0], nspid)).flatten()
-            img[out_mask] = np.random.choice(excess, (img.shape[0], nout)).flatten()
+            img[:,spiders] = np.random.choice(excess, (img.shape[0], nspid))
 
             #Subtract background
             back = np.median(excess)
@@ -195,6 +195,10 @@ class Experiment_Image_Processor(object):
         #Save Data
         if self.do_save:
             self.save_data(mask_type, imgs, locs, meta)
+
+        #End
+        tok = time.perf_counter()
+        print(f'Time: {tok-tik:.1f} [s]\n')
 
 ############################################
 
@@ -279,38 +283,26 @@ class Experiment_Image_Processor(object):
             pupil_mask[pupil_mask <  0.5] = 0
             pupil_mask[pupil_mask >= 0.5] = 1
 
-            #Get indices of spiders and outside aperture
-            rr = np.hypot(*(np.indices(self.img_shape) - self.img_shape[0]/2))
-            spiders = (rr <= self.num_pts/2) & (pupil_mask == 0)
-            out_mask = rr > self.num_pts/2
-
-            del full_mask
-
         elif mask_type == 'round':
 
             #Get indices of outside aperture
             rr = np.hypot(*(np.indices(self.img_shape) - self.img_shape[0]/2))
-            out_mask = rr > self.num_pts/2
-            #No spiders
-            spiders = np.zeros(self.img_shape).astype(bool)
-
             #Just round aperture
             pupil_mask = np.ones(self.img_shape)
-            pupil_mask[out_mask] = 0.
+            pupil_mask[rr > self.num_pts/2] = 0.
 
         else:
 
             #No mask
             pupil_mask = np.ones(self.img_shape)
 
-            out_mask = np.zeros(self.img_shape).astype(bool)
-            spiders = np.zeros(self.img_shape).astype(bool)
+        #Build spiders mask (boolean where mask is 0)
+        spiders = pupil_mask == 0
 
-        #Tile for multiple exposures
-        spiders = np.tile(spiders, (self.num_kin, 1, 1))
-        out_mask = np.tile(out_mask, (self.num_kin, 1, 1))
+        #Cleanup
+        del pupil_mask
 
-        return pupil_mask, spiders, out_mask
+        return spiders
 
 ############################################
 ############################################

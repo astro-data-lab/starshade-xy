@@ -94,15 +94,15 @@ def test(model, testloader):
 def main():
 
     #Saving
-    save_name = 'newest_2'
+    save_name = 'New'
 
     #Training
     train_run = 'trainset'
-    train_dir = './quadrature_code/Noisy_Data'
+    train_dir = './quadrature_code/New_Noisy_Data'
 
     #Testing
     test_run = 'testset'
-    test_dir = './quadrature_code/Noisy_Data'
+    test_dir = './quadrature_code/New_Noisy_Data'
 
     transform = transforms.Compose([transforms.ToTensor()])
 

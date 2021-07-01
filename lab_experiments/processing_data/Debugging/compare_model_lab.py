@@ -23,11 +23,11 @@ import image_util
 
 session = 'run__6_01_21'
 run = 'data_1s_bin1'
-mask_type = ['spiders', 'round', 'none'][2]
+mask_type = ['spiders', 'round', 'none'][0]
 is_med = True
 
 #Desired center (in fractions of tel_radius)
-frac_cen = [0.65, 0.65]
+frac_cen = [0.45,0]
 # frac_cen = [-0.15, 0.35]
 # frac_cen = [1, 0]
 
@@ -45,7 +45,7 @@ lab_params = {}
 
 #Load lab data
 lab_name = f'{session}__{run}__{mask_type}{["", "__median"][int(is_med)]}'
-with h5py.File(f'../Results/{lab_name}.h5', 'r') as f:
+with h5py.File(f'../Arda_Results/{lab_name}.h5', 'r') as f:
     #get center
     cen = np.array(frac_cen) * f['tel_diameter']/2
 
@@ -77,7 +77,7 @@ if mask_type == 'none':
 #Add one pixel to match diffraq
 dx = lab_params['tel_diameter']/lab_params['num_tel_pts']
 
-# pos0 += dx
+pos0 += dx
 
 ############################################
 ####    Simulate Image ####
@@ -120,7 +120,6 @@ sim.setup_sim()
 sim_img = np.abs(sim.calculate_diffraction())**2
 
 
-# plt.imshow(sim_img)
 # breakpoint()
 # sim_pup = sim.calculate_diffraction()
 # sim_img, grid_pts = sim.focuser.calculate_image(sim_pup)

@@ -36,7 +36,7 @@ class Truth_Sensor(object):
 
         #Define "center"
         if self.image_center is None:
-            cen = np.array(self.parent.img_shape)/2
+            cen = np.array(self.parent.img_shape)/2 + 1
         else:
             cen = self.image_center
 
@@ -69,7 +69,7 @@ class Truth_Sensor(object):
 ####	Main Function ####
 ############################################
 
-    def get_position(self, img, exp_time, pos0):
+    def get_position(self, img, exp_time, pos0, do_plot=False):
         #Get image error
         det_var = self.ccd_dark*exp_time + self.ccd_cic**2. + \
             self.ccd_read**2.
@@ -82,7 +82,7 @@ class Truth_Sensor(object):
         tru, err, is_good = self.sense_func(img, det_var, pos0)
 
         #Debug
-        if [False, True][0]:
+        if do_plot:
             self.show_plot(img, pos0, tru)
 
         #Check flag
@@ -267,8 +267,9 @@ class Truth_Sensor(object):
 
         plt.cla()
         plt.imshow(img, extent=img_extent)
-        plt.plot(pos[0], pos[1], 'rs')
-        plt.plot(pos0[0], pos0[1], 'kx')
+        plt.plot(pos[0], pos[1], 'rs', label='Solved')
+        plt.plot(pos0[0], pos0[1], 'kx', label='Guess')
+        plt.legend()
         plt.show()
         breakpoint()
 

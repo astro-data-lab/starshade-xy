@@ -134,12 +134,13 @@ class Experiment_Image_Processor(object):
 
         #Loop through steps and get images and exposure times + backgrounds
         imgs = np.empty((0,) + self.img_shape)
+        phos = np.empty((0,))
         locs = np.empty((0, 2))
         meta = np.empty((0, 3))
         for i in range(len(self.record)):
 
             #Get image
-            img, exp = self.get_image(int(self.record[i][0]))
+            img, exp, pho = self.get_image(int(self.record[i][0]))
 
             #Get excess regions
             nbk = 40//self.binning
@@ -157,6 +158,7 @@ class Experiment_Image_Processor(object):
             if self.is_med:
                 nframe = img.shape[0]
                 img = np.array([np.median(img, 0)])
+                pho = np.array([np.median(pho)])
             else:
                 nframe = 1
 
@@ -185,6 +187,7 @@ class Experiment_Image_Processor(object):
 
             #Store images + positions
             imgs = np.concatenate((imgs, img))
+            phos = np.concatenate((phos, pho))
             locs = np.concatenate((locs, [pos]*img.shape[0]))
             #Store exposure time + backgrounds + number of frames
             meta = np.concatenate((meta, [[exp, back, nframe]]*img.shape[0]))
@@ -195,7 +198,7 @@ class Experiment_Image_Processor(object):
 
         #Save Data
         if self.do_save:
-            self.save_data(mask_type, imgs, locs, meta)
+            self.save_data(mask_type, imgs, phos, locs, meta)
             if mask_type == 'none':
                 self.save_truths()
 
@@ -203,6 +206,7 @@ class Experiment_Image_Processor(object):
         tok = time.perf_counter()
         print(f'Time: {tok-tik:.1f} [s]\n')
 
+############################################
 ############################################
 
 ############################################
@@ -243,9 +247,9 @@ class Experiment_Image_Processor(object):
         #Normalize by photometer data and suppression mean (diverging beam factor**2)
         img /= pho[:,None,None] * self.cal_value
 
-        return img, exp
+        return img, exp, pho
 
-    def save_data(self, mask_type, imgs, locs, meta):
+    def save_data(self, mask_type, imgs, phos, locs, meta):
 
         ext = ['', '__median'][int(self.is_med)]
         fname = f'{self.save_dir}/{self.session}__{self.run}__{mask_type}{ext}.h5'
@@ -260,6 +264,7 @@ class Experiment_Image_Processor(object):
             f.create_dataset('meta', data=meta, compression=8)
             f.create_dataset('positions', data=locs, compression=8)
             f.create_dataset('images', data=imgs, compression=8)
+            f.create_dataset('phos', data=phos, compression=8)
 
     def save_truths(self):
         ext = ['', '__median'][int(self.is_med)]

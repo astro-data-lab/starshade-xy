@@ -15,6 +15,7 @@ import os
 import glob
 import h5py
 import atexit
+from scipy.optimize import fmin
 
 class Noise_Maker(object):
 
@@ -106,11 +107,6 @@ class Noise_Maker(object):
 
     def run_multiple_snr_script(self):
 
-        #Save info
-        if self.do_save:
-            with h5py.File(f'{self.save_dir}/meta.h5', 'w') as f:
-                f.create_dataset('multi_SNRs', data=self.multi_SNRs)
-
         #Image counter
         cntr = 0
 
@@ -120,20 +116,33 @@ class Noise_Maker(object):
         #Number of images
         num_imgs = len(shifts)
 
+        #Get exposure times, peak_cnts
+        peak_exps = np.array([self.get_counts_from_SNR(snr) for snr in self.multi_SNRs])
+
+        #Save info
+        if self.do_save:
+            with h5py.File(f'{self.save_dir}/meta.h5', 'w') as f:
+                f.create_dataset('multi_SNRs', data=self.multi_SNRs)
+                f.create_dataset('peak_cnts', data=peak_exps[:,0])
+                f.create_dataset('exp_times', data=peak_exps[:,1])
+                f.create_dataset('num_imgs', data=num_imgs)
+
         #Open csv file
         if self.do_save:
             csv_file = open(f'{self.save_dir}/{self.base_name}.csv', 'w')
             atexit.register(csv_file.close)
 
         #Loop through SNRs
-        for snr in self.multi_SNRs:
+        for snr_i in range(len(self.multi_SNRs)):
+
+            snr = self.multi_SNRs[snr_i]
             print(f'Adding noise to SNR: {snr}')
 
             #Just for debugging
             self.target_SNR = snr
 
             #Get peak count estimate from SNR
-            peak_cnts, exp_time = self.get_counts_from_SNR(snr)
+            peak_cnts, exp_time = peak_exps[snr_i]
 
             #Loop through and process each image file
             for i in range(num_imgs):
@@ -170,21 +179,23 @@ class Noise_Maker(object):
         #Estimate number of points in FWHM
         num_ap = (self.fwhm - 1)**2
 
-        #Total counts in signal
-        total_sig = np.arange(2**16*num_ap).astype(float)
-
         #Exposure time to get total counts (count rate is peak count rate)
-        texps = total_sig / (num_ap * self.peak2mean * self.count_rate)
+        texp = lambda s: s / (num_ap * self.peak2mean * self.count_rate)
 
         #Noise for each exposure time
-        noise = np.sqrt(total_sig*self.ccd_gain + num_ap*(self.ccd_dark*texps + \
+        noise = lambda s: np.sqrt(s*self.ccd_gain + num_ap*(self.ccd_dark*texp(s) + \
             self.ccd_read**2. + self.ccd_cic))
 
         #Mean SNR
-        mean_snr = total_sig * self.ccd_gain / noise / num_ap
+        mean_snr = lambda s: s * self.ccd_gain / noise(s) / num_ap
 
-        #Get exposure time from best fit to mean SNR
-        exp_time = texps[np.argmin(np.abs(mean_snr - target_SNR))]
+        #Solve for total counts that gives mean SNR closest to target SNR
+        func = lambda s: np.abs(mean_snr(s) - target_SNR)
+        x0 = num_ap * self.fwhm
+        out = fmin(func, x0, disp=0)[0]
+
+        #Get exposure time
+        exp_time = texp(out)
 
         #Get peak counts to aim for
         peak_counts = self.count_rate * exp_time

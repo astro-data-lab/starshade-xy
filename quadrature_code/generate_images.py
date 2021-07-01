@@ -15,7 +15,7 @@ import diffraq
 import os
 
 #Save directory
-base_dir = './Data'
+base_dir = './New_Data'
 
 #Loop over training and testing
 for base_name in ['trainset', 'testset']:
@@ -31,7 +31,7 @@ for base_name in ['trainset', 'testset']:
     nsteps = {'testset':20, 'trainset':50}[base_name]
 
     #Width of motion grid [m]
-    width = 2.5e-3
+    width = 3.0e-3
 
     #Spacing between position steps [m]
     dstep = width / nsteps

@@ -17,6 +17,14 @@ import os
 #Save directory
 base_dir = 'New_Data'
 
+#Width of motion grid [m]
+width = 3.0e-3
+
+#Number of steps
+num_steps = {'testset':20, 'trainset':50}
+
+############################
+
 #Loop over training and testing
 for base_name in ['trainset', 'testset']:
 
@@ -28,10 +36,7 @@ for base_name in ['trainset', 'testset']:
         os.makedirs(save_dir)
 
     #Number of steps
-    nsteps = {'testset':20, 'trainset':50}[base_name]
-
-    #Width of motion grid [m]
-    width = 3.0e-3
+    nsteps = num_steps[base_name]
 
     #Spacing between position steps [m]
     dstep = width / nsteps
@@ -50,7 +55,7 @@ for base_name in ['trainset', 'testset']:
         'with_spiders':     True,           #Superimpose spiders on pupil image?
 
         ### Starshade ###
-        'apod_name':        'm12p8',       #Apodization profile name. Options: ['lab_ss', 'circle']
+        'apod_name':        'm12p8',        #Apodization profile name. Options: ['lab_ss', 'circle']
         'num_petals':       12,             #Number of starshade petals
 
         ### Saving ###

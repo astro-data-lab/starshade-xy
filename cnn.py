@@ -140,7 +140,7 @@ def main():
         #Train
         train(model, trainloader, optimizer, epoch)
         #Test
-        test(model, testloader)
+        test(model, testloader)     #TODO: is it necessary to test here?
         #Step scheduler
         scheduler.step()
 

@@ -20,11 +20,12 @@ for run in runs:
     print(f'\nProcessing Run: {run} ...')
 
     params = {
-        'do_save':          True,
+        'data_dir':         '/home/aharness/Research/Frick_Lab/Data/FFNN',
         'run':              run,
         'session':          session,
-        'is_med':           True,
+        'is_median':        True,
         'save_dir':         'Processed_Images',
+        'do_save':          True,
 
     }
 

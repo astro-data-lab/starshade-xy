@@ -32,7 +32,7 @@ class Experiment_Image_Processor(object):
         #Default parameters
         def_pms = {
             ### Loading ###
-            'base_dir':         '/home/aharness/Research/Frick_Lab/Data/FFNN',
+            'data_dir':         '',
             'xtras_dir':        '../../quadrature_code/xtras',
             'save_dir':         'Processed_Images',
             'run':              '',
@@ -42,7 +42,7 @@ class Experiment_Image_Processor(object):
             'do_save':          False,
             'do_plot':          False,
             ### Observation ###
-            'is_med':           False,
+            'is_median':        False,
             'base_num_pts':     96,
             'image_pad':        10,
             ### Truth Sensor ###
@@ -69,7 +69,7 @@ class Experiment_Image_Processor(object):
             setattr(self, k, v)
 
         #Directories
-        self.load_dir = os.path.join(self.base_dir, self.session, self.run)
+        self.load_dir = os.path.join(self.data_dir, self.session, self.run)
 
         #FIXED
         pupil_mag = 1.764
@@ -156,7 +156,7 @@ class Experiment_Image_Processor(object):
             img -= back
 
             #Take median
-            if self.is_med:
+            if self.is_median:
                 nframe = img.shape[0]
                 img = np.array([np.median(img, 0)])
                 pho = np.array([np.median(pho)])
@@ -252,7 +252,7 @@ class Experiment_Image_Processor(object):
 
     def save_data(self, mask_type, imgs, phos, locs, meta):
 
-        ext = ['', '__median'][int(self.is_med)]
+        ext = ['', '__median'][int(self.is_median)]
         fname = os.path.join(self.save_dir, \
             f'{self.session}__{self.run}__{mask_type}{ext}.h5')
 
@@ -269,7 +269,7 @@ class Experiment_Image_Processor(object):
             f.create_dataset('phos', data=phos, compression=8)
 
     def save_truths(self):
-        ext = ['', '__median'][int(self.is_med)]
+        ext = ['', '__median'][int(self.is_median)]
         fname = os.path.join(self.save_dir, \
             f'truths__{self.session}__{self.run}{ext}.h5')
 
@@ -277,7 +277,7 @@ class Experiment_Image_Processor(object):
             f.create_dataset('true_position', data=self.true_position)
 
     def load_truths(self):
-        ext = ['', '__median'][int(self.is_med)]
+        ext = ['', '__median'][int(self.is_median)]
         fname = os.path.join(self.save_dir, \
             f'truths__{self.session}__{self.run}{ext}.h5')
 

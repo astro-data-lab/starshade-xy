@@ -23,7 +23,7 @@ for base_name in ['trainset', 'testset']:
     print(f'\nRunning {base_name} ...')
 
     #Create directory
-    save_dir = os.path.join(base_dir, base_name)
+    save_dir = os.path.join('Simulated_Images', base_dir, base_name)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 

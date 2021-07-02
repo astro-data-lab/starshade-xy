@@ -34,7 +34,7 @@ class Experiment_Image_Processor(object):
             ### Loading ###
             'base_dir':         '/home/aharness/Research/Frick_Lab/Data/FFNN',
             'xtras_dir':        '../../quadrature_code/xtras',
-            'save_dir':         './Results',
+            'save_dir':         'Processed_Images',
             'run':              '',
             'session':          '',
             'do_round_mask':    False,

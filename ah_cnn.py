@@ -113,7 +113,7 @@ def main():
     ################################
 
     #Build directories
-    data_base_dir = 'quadrature_code'
+    data_base_dir = 'quadrature_code/Simulated_Images'
     train_dir = os.path.join(data_base_dir, train_dir_ext)
     test_dir = os.path.join(data_base_dir, test_dir_ext)
 

@@ -10,7 +10,7 @@ model = 'New'
 
 do_save = [False, True][0]
 
-results_dir = 'Results'
+results_dir = 'Test_Results'
 plot_dir = 'Plots'
 
 #Load results
@@ -72,9 +72,14 @@ axesh.legend()
 print(rerr.mean(), rerr.std())
 
 if do_save:
+    #Make sure directory exists
+    if not os.path.exists(plot_dir):
+        os.makedirs(plot_dir)
+
+    #Save plots
     ext = f"{data_run.split('__')[1]}__{model}"
     fig.savefig(os.path.join(plot_dir, f'error_map__{ext}.png'), dpi=200)
     figh.savefig(os.path.join(plot_dir, f'histogram__{ext}.png'), dpi=200)
-    
+
 else:
     breakpoint()

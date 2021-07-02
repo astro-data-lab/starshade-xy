@@ -24,7 +24,7 @@ for run in runs:
         'run':              run,
         'session':          session,
         'is_med':           True,
-        'save_dir':         'Results',
+        'save_dir':         'Processed_Images',
 
     }
 

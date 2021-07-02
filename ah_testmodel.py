@@ -16,9 +16,9 @@ data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
 model_name = 'New'
 
 #Directories
-data_dir = './lab_experiments/processing_data/Results'
+data_dir = './lab_experiments/processing_data/Processed_Images'
 model_dir = 'models'
-save_dir = 'Results'
+save_dir = 'Test_Results'
 
 #Normalization (close to peak suppression / dist_scaling^2)
 normalization = 0.03
@@ -71,6 +71,11 @@ with torch.no_grad():
 
 #Save results
 if do_save:
+    #Make sure directory exists
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    #Save data
     with h5py.File(os.path.join(save_dir, f'{data_run}__{model_name}.h5'), 'w') as f:
         f.create_dataset('xerr', data=xerr)
         f.create_dataset('yerr', data=yerr)

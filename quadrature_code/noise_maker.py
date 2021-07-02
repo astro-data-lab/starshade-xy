@@ -64,8 +64,8 @@ class Noise_Maker(object):
             setattr(self, k, v)
 
         #Build directories
-        self.load_dir = os.path.join(self.load_dir_base, self.base_name)
-        self.save_dir = os.path.join(self.save_dir_base, self.base_name)
+        self.load_dir = os.path.join('Simulated_Images', self.load_dir_base, self.base_name)
+        self.save_dir = os.path.join('Simulated_Images', self.save_dir_base, self.base_name)
 
         #Create save directory
         if self.do_save:

@@ -38,6 +38,5 @@ def round_aperture(img, dr=0):
 def get_image_radii(img_shp, cen=None):
     yind, xind = np.indices(img_shp)
     if cen is None:
-        #TODO: is -1 correct?
         cen = [(img_shp[-2] - 1)/2, (img_shp[-1] - 1)/2]
     return np.hypot(xind - cen[0], yind - cen[1])

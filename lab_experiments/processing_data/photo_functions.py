@@ -59,14 +59,15 @@ def load_photometer_h5(fname):
 def load_photometer_data(data_dir, photo_file):
     #Get photo file name
     if photo_file is None:
-        flist = glob.glob(f'{data_dir}/data_*.dat')
+        flist = glob.glob(os.path.join(data_dir, 'data_*.dat'))
         if len(flist) > 1:
             print('\n!Too many photo files in this directory!\n')
             breakpoint()
-        photo_file = flist[0].split(data_dir+'/')[-1].split('.dat')[0].split('data_')[-1]
+
+        photo_file = os.path.split(flist[0])[-1].split('.dat')[0].split('data_')[-1]
 
     #full filename
-    fname = f'{data_dir}/data_{photo_file}'
+    fname = os.path.join(data_dir, 'data_' + photo_file)
 
     #Check if we've already loaded into hdf5 file
     if not os.path.exists(f'{fname}.h5'):

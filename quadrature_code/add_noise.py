@@ -14,8 +14,8 @@ import numpy as np
 
 snrs = np.concatenate((np.arange(0.05, 1, 0.125), [3,5]))
 
-load_dir = './New_Data'
-save_dir = './New_Noisy_Data'
+load_dir = 'New_Data'
+save_dir = 'New_Noisy_Data'
 
 for base_name in ['trainset', 'testset']:
 

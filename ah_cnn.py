@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-
+import time
 
 img_size = 116
 lr = 1e-3
@@ -20,10 +20,12 @@ normalization = 0.03
 class StarshadeDataset(Dataset):
 
     def __init__(self, data_dir, root_name, transform=None):
-        self.root_dir = f'{data_dir}/{root_name}'
+        self.root_dir = os.path.join(data_dir, root_name)
         self.root_name = root_name
         self.transform = transform
-        self.shifts = np.genfromtxt(f'{self.root_dir}/{root_name}.csv', delimiter=',')
+        #Load shifts from csv file
+        self.shifts = np.genfromtxt(os.path.join(self.root_dir, \
+            root_name + '.csv'), delimiter=',')
 
     def __len__(self):
         return len(self.shifts)
@@ -32,10 +34,13 @@ class StarshadeDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
+        #Load image
         img_path = os.path.join(self.root_dir, str(idx).zfill(6) + '.npy')
         image = np.load(img_path).astype('float32')
+        #Normalize the image
         image /= normalization
 
+        #Grab the current shift and scale to space-scale
         xy = self.shifts[idx, 1:].astype(np.float32)
         xy *= 1000
 
@@ -95,34 +100,62 @@ def main():
 
     #Saving
     save_name = 'New'
+    save_dir = 'models'
 
     #Training
     train_run = 'trainset'
-    train_dir = './quadrature_code/New_Noisy_Data'
+    train_dir_ext = 'New_Noisy_Data'
 
     #Testing
     test_run = 'testset'
-    test_dir = './quadrature_code/New_Noisy_Data'
+    test_dir_ext = train_dir_ext
 
+    ################################
+
+    #Build directories
+    data_base_dir = 'quadrature_code'
+    train_dir = os.path.join(data_base_dir, train_dir_ext)
+    test_dir = os.path.join(data_base_dir, test_dir_ext)
+
+    #Transform
     transform = transforms.Compose([transforms.ToTensor()])
 
+    #Load training data
     trainset = StarshadeDataset(train_dir, train_run, transform=transform)
     trainloader = DataLoader(trainset, batch_size=8, shuffle=True)
 
+    #Load testing data
     testset = StarshadeDataset(test_dir, test_run, transform=transform)
     testloader = DataLoader(testset, batch_size=8, shuffle=False)
 
+    #Create model
     model = CNN()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-2)
 
+    #Build scheduler
     scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
+
+    #Loop through epochs
     for epoch in range(num_epochs):
+        #Train
         train(model, trainloader, optimizer, epoch)
+        #Test
         test(model, testloader)
+        #Step scheduler
         scheduler.step()
 
-    torch.save(model.state_dict(), f"models/{save_name}.pt")
+    #Save model
+    torch.save(model.state_dict(), os.path.join(save_dir, save_name + '.pt'))
 
 
 if __name__ == '__main__':
+
+    #Start timer
+    tik = time.perf_counter()
+
+    #Run main script
     main()
+
+    #Print time
+    tok = time.perf_counter()
+    print(f'\nElapsed time: {tok-tik:.2f} [s]\n')

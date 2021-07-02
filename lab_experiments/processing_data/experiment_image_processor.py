@@ -10,6 +10,7 @@ Description: Script to add spiders and secondary to experimental images.
 """
 
 import numpy as np
+import os
 import h5py
 import image_util
 import time
@@ -68,7 +69,7 @@ class Experiment_Image_Processor(object):
             setattr(self, k, v)
 
         #Directories
-        self.load_dir = f'{self.base_dir}/{self.session}/{self.run}'
+        self.load_dir = os.path.join(self.base_dir, self.session, self.run)
 
         #FIXED
         pupil_mag = 1.764
@@ -81,7 +82,7 @@ class Experiment_Image_Processor(object):
     def setup(self):
 
         #Get image shape
-        img, dummy1, dummy2 = pfunc.load_image(f'{self.load_dir}/image__0001.fits')
+        img, _, _ = pfunc.load_image(os.path.join(self.load_dir, 'image__0001.fits'))
         self.num_kin = img.shape[0]
         self.img_shape = img.shape[1:]
 
@@ -105,7 +106,7 @@ class Experiment_Image_Processor(object):
         self.load_calibration()
 
         #Load image record
-        self.record = np.genfromtxt(f'{self.load_dir}/record.csv', delimiter=',')
+        self.record = np.genfromtxt(os.path.join(self.load_dir, 'record.csv'), delimiter=',')
 
         #Prepare true position
         self.true_position = np.empty((len(self.record),2))
@@ -220,7 +221,7 @@ class Experiment_Image_Processor(object):
         self.photo_data = pfunc.load_photometer_data(cal_dir, None)
 
         #Load calibration data
-        fname = f'{cal_dir}/cal_sup.fits'
+        fname = os.path.join(cal_dir, 'cal_sup.fits')
         cimg, cexp, cpho = pfunc.get_image_data(fname, self.photo_data)
 
         #Kluge for 6_1_21 b/c overexposed data
@@ -241,7 +242,7 @@ class Experiment_Image_Processor(object):
 
     def get_image(self, inum):
         #Get data
-        fname = f'{self.load_dir}/image__{str(inum).zfill(4)}.fits'
+        fname = os.path.join(self.load_dir, f'image__{str(inum).zfill(4)}.fits')
         img, exp, pho = pfunc.get_image_data(fname, self.photo_data)
 
         #Normalize by photometer data and suppression mean (diverging beam factor**2)
@@ -252,7 +253,8 @@ class Experiment_Image_Processor(object):
     def save_data(self, mask_type, imgs, phos, locs, meta):
 
         ext = ['', '__median'][int(self.is_med)]
-        fname = f'{self.save_dir}/{self.session}__{self.run}__{mask_type}{ext}.h5'
+        fname = os.path.join(self.save_dir, \
+            f'{self.session}__{self.run}__{mask_type}{ext}.h5')
 
         with h5py.File(fname, 'w') as f:
             f.create_dataset('cal_value', data=self.cal_value)
@@ -268,13 +270,17 @@ class Experiment_Image_Processor(object):
 
     def save_truths(self):
         ext = ['', '__median'][int(self.is_med)]
-        fname = f'{self.save_dir}/truths__{self.session}__{self.run}{ext}.h5'
+        fname = os.path.join(self.save_dir, \
+            f'truths__{self.session}__{self.run}{ext}.h5')
+
         with h5py.File(fname, 'w') as f:
             f.create_dataset('true_position', data=self.true_position)
 
     def load_truths(self):
         ext = ['', '__median'][int(self.is_med)]
-        fname = f'{self.save_dir}/truths__{self.session}__{self.run}{ext}.h5'
+        fname = os.path.join(self.save_dir, \
+            f'truths__{self.session}__{self.run}{ext}.h5')
+
         with h5py.File(fname, 'r') as f:
             self.true_position = f['true_position'][()]
 
@@ -290,7 +296,7 @@ class Experiment_Image_Processor(object):
         #Use spider mask or just round aperture
         if mask_type == 'spiders':
             #Load Pupil Mask
-            with h5py.File(f'{self.xtras_dir}/pupil_mask.h5', 'r') as f:
+            with h5py.File(os.path.join(self.xtras_dir,'pupil_mask.h5'), 'r') as f:
                 full_mask = f['mask'][()]
 
             #Do affine transform

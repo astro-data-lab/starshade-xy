@@ -15,7 +15,7 @@ import diffraq
 import os
 
 #Save directory
-base_dir = './New_Data'
+base_dir = 'New_Data'
 
 #Loop over training and testing
 for base_name in ['trainset', 'testset']:
@@ -23,7 +23,7 @@ for base_name in ['trainset', 'testset']:
     print(f'\nRunning {base_name} ...')
 
     #Create directory
-    save_dir = f'{base_dir}/{base_name}'
+    save_dir = os.path.join(base_dir, base_name)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -70,7 +70,7 @@ for base_name in ['trainset', 'testset']:
     positions = np.empty((0, 2))
 
     #Create new csv file
-    csv_file = f'{save_dir}/{base_name}.csv'
+    csv_file = os.path.join(save_dir, base_name + '.csv')
     with open(csv_file, 'w') as f:
         pass
 
@@ -91,8 +91,11 @@ for base_name in ['trainset', 'testset']:
             #Number string
             num_str = str(i).zfill(6)
 
-            #Save and write position to csv
-            np.save(f'{save_dir}/{num_str}', img)
+            #Save image
+            img_file = os.path.join(save_dir, num_str)
+            np.save(img_file, img)
+
+            #Write position to csv
             with open(csv_file, 'a') as f:
                 f.write(f'{num_str}, {nx}, {ny}\n')
             i += 1

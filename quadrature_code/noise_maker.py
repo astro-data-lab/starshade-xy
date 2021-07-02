@@ -30,11 +30,11 @@ class Noise_Maker(object):
         #Default parameters
         def_pms = {
             ### Loading ###
-            'load_dir_base':    './',           #Directory to load pre-made images
+            'load_dir_base':    '',             #Directory to load pre-made images
             'load_file_ext':    '.npy',         #File extenstion for data
             'base_name':        '',             #Base image name
             ### Saving ###
-            'save_dir_base':    './',           #Directory to save images with noise added
+            'save_dir_base':    '',             #Directory to save images with noise added
             'do_save':          True,           #Save data?
             ### Observation ###
             'target_SNR':       5,              #Target SNR of peak of diffraction pattern
@@ -64,8 +64,8 @@ class Noise_Maker(object):
             setattr(self, k, v)
 
         #Build directories
-        self.load_dir = f'{self.load_dir_base}/{self.base_name}'
-        self.save_dir = f'{self.save_dir_base}/{self.base_name}'
+        self.load_dir = os.path.join(self.load_dir_base, self.base_name)
+        self.save_dir = os.path.join(self.save_dir_base, self.base_name)
 
         #Create save directory
         if self.do_save:
@@ -87,7 +87,8 @@ class Noise_Maker(object):
         peak_cnts, exp_time = self.get_counts_from_SNR(self.target_SNR)
 
         #Get all filenames
-        self.image_files = glob.glob(f'{self.load_dir}/*{self.load_file_ext}')
+        self.image_files = glob.glob(os.path.join(self.load_dir, \
+            '*' + self.load_file_ext))
 
         #Loop through and process each image file
         for img_file in self.image_files:
@@ -100,8 +101,8 @@ class Noise_Maker(object):
 
             #Save image
             if self.do_save:
-                save_name = img_file.split('/')[-1].split('.npy')[0]
-                np.save(f'{self.save_dir}/{save_name}', img)
+                save_name = os.path.split(img_file)[-1].split('.npy')[0]
+                np.save(os.path.join(self.save_dir, save_name), img)
 
     ############################################
 
@@ -111,7 +112,8 @@ class Noise_Maker(object):
         cntr = 0
 
         #Get all shifts
-        shifts = np.genfromtxt(f'{self.load_dir}/{self.base_name}.csv', delimiter=',')
+        shifts = np.genfromtxt(os.path.join(self.load_dir, \
+            self.base_name + '.csv'), delimiter=',')
 
         #Number of images
         num_imgs = len(shifts)
@@ -121,7 +123,7 @@ class Noise_Maker(object):
 
         #Save info
         if self.do_save:
-            with h5py.File(f'{self.save_dir}/meta.h5', 'w') as f:
+            with h5py.File(os.path.join(self.save_dir, 'meta.h5'), 'w') as f:
                 f.create_dataset('multi_SNRs', data=self.multi_SNRs)
                 f.create_dataset('peak_cnts', data=peak_exps[:,0])
                 f.create_dataset('exp_times', data=peak_exps[:,1])
@@ -129,7 +131,7 @@ class Noise_Maker(object):
 
         #Open csv file
         if self.do_save:
-            csv_file = open(f'{self.save_dir}/{self.base_name}.csv', 'w')
+            csv_file = open(os.path.join(self.save_dir, self.base_name+'.csv'), 'w')
             atexit.register(csv_file.close)
 
         #Loop through SNRs
@@ -148,7 +150,7 @@ class Noise_Maker(object):
             for i in range(num_imgs):
 
                 #Load image
-                img = np.load(f'{self.load_dir}/{str(i).zfill(6)}.npy')
+                img = np.load(os.path.join(self.load_dir, str(i).zfill(6)+'.npy'))
 
                 #Add noise to image
                 img = self.add_noise_to_image(img, peak_cnts)
@@ -159,7 +161,7 @@ class Noise_Maker(object):
                 #Save
                 if self.do_save:
                     #Save image
-                    np.save(f'{self.save_dir}/{str(cntr).zfill(6)}', img)
+                    np.save(os.path.join(self.save_dir, str(cntr).zfill(6)), img)
 
                     #Writeout shift
                     csv_file.write(f'{str(cntr).zfill(6)}, {shifts[i][1]}, {shifts[i][2]}\n')

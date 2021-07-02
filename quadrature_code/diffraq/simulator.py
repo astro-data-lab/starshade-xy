@@ -59,12 +59,12 @@ class Simulator(object):
             'is_babinet':       False,          #Use Babinet's principle?
             ### Saving ###
             'verbose':          True,           #Print out status statements?
-            'save_dir_base':    './',           #Base directory to save data
+            'save_dir_base':    '',             #Base directory to save data
             'session':          '',             #Session name, i.e., subfolder to save data
             'save_ext':         '',             #Save extension to append to data
-            'do_save':          True,           #Save data?
+            'do_save':          False,          #Save data?
             ### Misc ###
-            'xtras_dir':        './xtras',      #Location of extras (apodization function, pupil mask)
+            'xtras_dir':        'xtras',        #Location of extras (apodization function, pupil mask)
         }
 
         #Set user and default parameters
@@ -79,7 +79,7 @@ class Simulator(object):
 
         #Create save directory
         if self.do_save:
-            self.save_dir = f'{self.save_dir_base}/{self.session}'
+            self.save_dir = os.path.join(self.save_dir_base, self.session)
             if not os.path.exists(self.save_dir):
                 os.makedirs(self.save_dir)
 
@@ -192,7 +192,7 @@ class Simulator(object):
     def build_starshade_quadrature(self):
 
         #Load apod data
-        fname = f'{self.xtras_dir}/apod__{self.apod_name}.h5'
+        fname = os.path.join(self.xtras_dir, f'apod__{self.apod_name}.h5')
         with h5py.File(fname, 'r') as f:
             data = f['data'][()]
             self.has_center = f['has_center'][()]
@@ -228,7 +228,7 @@ class Simulator(object):
         #Load Roman Space Telescope pupil
         if self.with_spiders:
             #Load Pupil Mask
-            with h5py.File(f'{self.xtras_dir}/pupil_mask.h5', 'r') as f:
+            with h5py.File(os.path.join(self.xtras_dir, 'pupil_mask.h5'), 'r') as f:
                 full_mask = f['mask'][()]
 
             #Do affine transform
@@ -274,7 +274,8 @@ class Simulator(object):
         save_ext = [self.save_ext, f'_{self.save_ext}'][int(self.save_ext != '')]
 
         #Save
-        with h5py.File(f'{self.save_dir}/diffraq_pupil{save_ext}.h5', 'w') as f:
+        fname = os.path.join(self.save_dir, f'diffraq_pupil{save_ext}.h')
+        with h5py.File(fname, 'w') as f:
             f.create_dataset('pupil_Ec', data = Emap)
             f.create_dataset('pupil_x', data = self.tel_pts_x)
             f.create_dataset('pupil_y', data = self.tel_pts_y)

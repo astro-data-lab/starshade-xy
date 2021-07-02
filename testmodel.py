@@ -1,66 +1,84 @@
-from astropy.stats import bayesian_blocks
 import h5py
-import matplotlib.pyplot as plt
+import os
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+from ah_cnn import CNN, StarshadeDataset    #FIXME: change import name
+import h5py
+import atexit
 
-from cnn import CNN, StarshadeDataset
+do_save = [False, True][1]
 
-transform = transforms.Compose([transforms.ToTensor()])
+data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
 
-'''
-testset = StarshadeDataset('./data/data96/test.csv', './data/data96/all_data/test', transform=transform)
-testloader = DataLoader(testset, batch_size=1, shuffle=True)
-'''
-testloader = h5py.File('h5data/data_30s_bin1.h5', 'r')
-images = testloader['images']
-positions = testloader['positions']
+model_name = 'New'
 
+#Directories
+data_dir = './lab_experiments/processing_data/Processed_Images'
+model_dir = 'models'
+save_dir = 'Test_Results'
+
+#Normalization (close to peak suppression / dist_scaling^2)
+normalization = 0.03
+
+#######################
+
+#Open test data file
+test_loader = h5py.File(os.path.join(data_dir, data_run + '.h5'), 'r')
+atexit.register(test_loader.close)
+#Get images and positions
+images = test_loader['images']
+positions = test_loader['positions']
+
+#Load model
 model = CNN()
-model.load_state_dict(torch.load('models/noisy96_all.pt'))
+model.load_state_dict(torch.load(os.path.join(model_dir, model_name + '.pt')))
 model.eval()
 
+#Transform
+transform = transforms.Compose([transforms.ToTensor()])
+
 ct = 0
-dist = []
-xerr = []
-yerr = []
+xerr = np.array([])
+yerr = np.array([])
 with torch.no_grad():
-    '''
-    for batch in testloader:
-        output = model(batch['image'])
-        diff = output - batch['xy']
-        dist.append((np.sqrt(diff[0,0]*diff[0,0] + diff[0,1]*diff[0,1])).item())
-    '''
+
     for img, pos in zip(images, positions):
         img = img.astype('float32')
-        img = img / np.amax(img)
+        #Normalize image
+        img /= normalization
+
+        #Transform image
         img = transform(img)
         img = torch.unsqueeze(img, 0)
+
+        #Get solved position
         output = model(img)
+        #Compare to truth (after scaling to space-scale)
         diff = output - 1000 * pos
-        xerr.append(diff[0, 0])
-        yerr.append(diff[0, 1])
-        dist.append((np.sqrt(diff[0,0]*diff[0,0] + diff[0,1]*diff[0,1])).item())
-        if (np.sqrt(diff[0,0]*diff[0,0] + diff[0,1]*diff[0,1])).item() > 0.1:
+
+        cur_x = diff[0,0].item()
+        cur_y = diff[0,1].item()
+        cur_r = np.hypot(cur_x, cur_y)
+
+        xerr = np.concatenate((xerr, [cur_x]))
+        yerr = np.concatenate((yerr, [cur_y]))
+
+        if cur_r > 0.1:
             ct += 1
 
-plt.scatter(xerr, yerr, marker = '+')
-plt.grid()
-plt.title('Scatterplot of Errors (SNR = 3.5)')
-plt.xlabel('Error in x (m)')
-plt.ylabel('Error in y (m)')
-plt.show()
-'''
+#Save results
+if do_save:
+    #Make sure directory exists
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
-print(ct)
-plt.hist(dist, bins=bayesian_blocks(dist))
-# plt.xlim([0, 0.1])
-plt.ylim([0, 2000])
-plt.title('Histogram of Errors (SNR = 5.5)')
-plt.xlabel('Error (m)')
-plt.ylabel('Frequency')
-plt.show()
-'''
+    #Save data
+    with h5py.File(os.path.join(save_dir, f'{data_run}__{model_name}.h5'), 'w') as f:
+        f.create_dataset('xerr', data=xerr)
+        f.create_dataset('yerr', data=yerr)
+        f.create_dataset('positions', data=positions)
+else:
+    breakpoint()

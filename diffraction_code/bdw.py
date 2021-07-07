@@ -61,6 +61,7 @@ class BDW(object):
             'image_pad':        10,             #Padding in pupil image outside of aperture
             'tel_shift':        [0,0],          #(x,y) shift of telescope relative to starshade-source line [m]
             'with_spiders':     False,          #Superimpose secondary mirror spiders on pupil image?
+            'skip_mask':        False,          #Skip pupil mask entirely
             ### Starshade ###
             'apod_name':        'lab_ss',       #Apodization profile name. Options: ['lab_ss', 'circle']
             'num_petals':       12,             #Number of starshade petals
@@ -107,7 +108,9 @@ class BDW(object):
         #Aperture points (include padding)
         self.image_width = self.tel_diameter * (1. + 2.*self.image_pad / self.num_tel_pts)
         self.num_pts = 2*self.image_pad + self.num_tel_pts
-        self.tel_pts = self.image_width*(np.arange(self.num_pts)/self.num_pts - 0.5)
+        # self.tel_pts = self.image_width*(np.arange(self.num_pts)/self.num_pts - 0.5)
+        #Below shows better agreement to matching lab
+        self.tel_pts = np.linspace(-self.image_width/2, self.image_width/2, self.num_pts)
 
     def setup_sim(self):
 
@@ -257,8 +260,12 @@ class BDW(object):
                 output_shape=(self.num_pts, self.num_pts), order=5)
 
             #Mask out
-            self.pupil_mask[self.pupil_mask < 0] = 0
-            self.pupil_mask[self.pupil_mask > 1] = 1
+            self.pupil_mask[self.pupil_mask <  0.5] = 0
+            self.pupil_mask[self.pupil_mask >= 0.5] = 1
+            
+        elif self.skip_mask:
+            #Don't have any mask
+            self.pupil_mask = np.ones((self.num_pts, self.num_pts))
 
         else:
             #Build round aperture for mask

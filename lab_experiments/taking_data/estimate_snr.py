@@ -17,8 +17,7 @@ import glob
 import image_util
 from scipy.ndimage import affine_transform
 
-all_sessions = ['data_30s_bin1', 'data_30s_bin2', 'data_20s_bin4', \
-    'data_60s_bin4']
+all_sessions = ['/run__6_01_21/data_1s_bin1']
 
 is_median = False
 
@@ -29,7 +28,7 @@ for session in all_sessions:
     image_pad = 10
 
     #aperture size (from pupil magnification)
-    Dtel = num_pts * 1.748*13e-6
+    Dtel = num_pts * 1.764*13e-6
 
     #TODO: hide
     data_dir = f'/home/aharness/Research/Frick_Lab/Data/FFNN/{session}'

@@ -2,7 +2,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
- 
+
 # Ignoring data files (too large)
-#data/*
-#noisy_data/*
+models/*
+*.npy
+*.h5
+*.csv
+*.png

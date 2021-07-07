@@ -59,14 +59,15 @@ def load_photometer_h5(fname):
 def load_photometer_data(data_dir, photo_file):
     #Get photo file name
     if photo_file is None:
-        flist = glob.glob(f'{data_dir}/data_*.dat')
+        flist = glob.glob(os.path.join(data_dir, 'data_*.dat'))
         if len(flist) > 1:
             print('\n!Too many photo files in this directory!\n')
             breakpoint()
-        photo_file = flist[0].split(data_dir+'/')[-1].split('.dat')[0].split('data_')[-1]
+
+        photo_file = os.path.split(flist[0])[-1].split('.dat')[0].split('data_')[-1]
 
     #full filename
-    fname = f'{data_dir}/data_{photo_file}'
+    fname = os.path.join(data_dir, 'data_' + photo_file)
 
     #Check if we've already loaded into hdf5 file
     if not os.path.exists(f'{fname}.h5'):
@@ -76,7 +77,7 @@ def load_photometer_data(data_dir, photo_file):
 
 def get_photometer_values(photo_time, photo_data, tims, exp, do_plot=False):
     ref_date = np.datetime64('2018-01-01')
-    sum_value = []
+    avg_value = []
     for i in range(len(tims)):
         #Get start time
         srt_time = tims[i]
@@ -92,13 +93,13 @@ def get_photometer_values(photo_time, photo_data, tims, exp, do_plot=False):
             if srt_time > photo_time.min() and end_time < photo_time.max():
                 #Find closest data point instead
                 ind = np.argmin(np.abs(photo_time - srt_time))
-                sum_value.append(photo_data[ind-2:ind+2].mean())
+                avg_value.append(photo_data[ind-2:ind+2].mean())
                 continue
             else:
                 print('\nNo photometer data found!\n')
                 breakpoint()
         #Save average photo data
-        sum_value.append(cur_vals.mean())
+        avg_value.append(cur_vals.mean())
 
         if do_plot:
             import matplotlib.pyplot as plt;plt.ion()
@@ -111,12 +112,12 @@ def get_photometer_values(photo_time, photo_data, tims, exp, do_plot=False):
         breakpoint()
         plt.cla()
 
-    sum_value = np.array(sum_value)
+    avg_value = np.array(avg_value)
 
     #Scale by exposure time
-    sum_value *= exp
+    avg_value *= exp
 
-    return sum_value
+    return avg_value
 
 ############################################
 ############################################
@@ -143,12 +144,18 @@ def get_header_pkg(head):
     times = get_time_data(head)
     return exp, times
 
-def get_image_data(fname, photo_data):
+def load_image(fname):
     with fits.open(fname) as hdu:
         #Get data
         data = hdu[0].data.astype(float)
         #Get header data
         exp, times = get_header_pkg(hdu[0].header)
+
+    return data, exp, times
+
+def get_image_data(fname, photo_data):
+    #Load image
+    data, exp, times = load_image(fname)
 
     #Get photometer data
     pho = get_photometer_values(*photo_data, times, exp)

@@ -166,7 +166,7 @@ class Imager(object):
     def take_picture(self, cntr=0):
         #Create filename to save if saving
         if self.do_save:
-            fname = rf"{self.save_dir}\image__{str(cntr).zfill(4)}"
+            fname = os.path.join(self.save_dir, f"image__{str(cntr).zfill(4)}")
         else:
             fname = None
 

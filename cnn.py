@@ -2,7 +2,7 @@ import numpy as np
 import os
 import torch
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import OneCycleLR
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
@@ -11,8 +11,7 @@ import time
 
 img_size = 116
 lr = 1e-3
-num_epochs = 15
-gamma = 0.8
+num_epochs = 1
 
 #Normalization (close to peak suppression / dist_scaling^2)
 normalization = 0.03
@@ -43,11 +42,12 @@ class StarshadeDataset(Dataset):
         #Grab the current shift and scale to space-scale
         xy = self.shifts[idx, 1:].astype(np.float32)
         xy *= 1000
+        xy = torch.from_numpy(xy)
 
         if self.transform:
             image = self.transform(image)
 
-        sample = {'image': image, 'xy': xy}
+        sample = [image, xy]
         return sample
 
 class CNN(nn.Module):
@@ -76,12 +76,12 @@ def train(model, trainloader, optimizer, epoch):
     model.train()
     for batch_idx, batch in enumerate(trainloader):
         optimizer.zero_grad()
-        output = model(batch['image'])
-        loss = F.mse_loss(output, batch['xy'])
+        output = model(batch[0])
+        loss = F.mse_loss(output, batch[1])
         loss.backward()
         optimizer.step()
         if batch_idx % 25 == 0:
-            print(f'Train Epoch: {epoch} [{batch_idx*len(batch["xy"])}/{len(trainloader.dataset)}]\tLoss: {loss.item()/len(batch["xy"])}')
+            print(f'Train Epoch: {epoch} [{batch_idx*len(batch[1])}/{len(trainloader.dataset)}]\tLoss: {loss.item()/len(batch[1])}')
 
 
 def test(model, testloader):
@@ -89,8 +89,8 @@ def test(model, testloader):
     test_loss = 0
     with torch.no_grad():
         for batch in testloader:
-            output = model(batch['image'])
-            test_loss += F.mse_loss(output, batch['xy']).item()
+            output = model(batch[0])
+            test_loss += F.mse_loss(output, batch[1]).item()
 
     test_loss /= len(testloader.dataset)
     print(f'\nTest Set: Average Loss {test_loss}\n')
@@ -99,12 +99,12 @@ def test(model, testloader):
 def main():
 
     #Saving
-    save_name = 'New'
+    save_name = 'tmp'
     save_dir = 'models'
 
     #Training
     train_run = 'trainset'
-    train_dir_ext = 'New_Noisy_Data'
+    train_dir_ext = 'Wide_Noisy_Data'
 
     #Testing
     test_run = 'testset'
@@ -133,7 +133,7 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-2)
 
     #Build scheduler
-    scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
+    scheduler = OneCycleLR(optimizer, lr, total_steps=num_epochs)
 
     #Loop through epochs
     for epoch in range(num_epochs):

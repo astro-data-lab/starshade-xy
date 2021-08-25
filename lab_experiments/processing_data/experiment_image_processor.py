@@ -36,6 +36,7 @@ class Experiment_Image_Processor(object):
             'xtras_dir':        '../../quadrature_code/xtras',
             'save_dir':         'Processed_Images',
             'run':              '',
+            'cal_ext':          '',             #Extension to calibration file
             'session':          '',
             'do_round_mask':    False,
             ### Saving ###
@@ -70,6 +71,8 @@ class Experiment_Image_Processor(object):
 
         #Directories
         self.load_dir = os.path.join(self.data_dir, self.session, self.run)
+        if self.cal_ext != '':
+            self.cal_ext = '_' + self.cal_ext
 
         #FIXED
         pupil_mag = 1.764
@@ -221,7 +224,7 @@ class Experiment_Image_Processor(object):
         self.photo_data = pfunc.load_photometer_data(cal_dir, None)
 
         #Load calibration data
-        fname = os.path.join(cal_dir, 'cal_sup.fits')
+        fname = os.path.join(cal_dir, f'cal_sup{self.cal_ext}.fits')
         cimg, cexp, cpho = pfunc.get_image_data(fname, self.photo_data)
 
         #Kluge for 6_1_21 b/c overexposed data

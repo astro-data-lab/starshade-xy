@@ -11,9 +11,10 @@ import atexit
 
 do_save = [False, True][1]
 
-data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+# data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+data_run = 'run__11_15_21_b__data_5s_bin1__spiders__median'
 
-model_name = 'New'
+model_name = 'Wide'
 
 #Directories
 data_dir = './lab_experiments/processing_data/Processed_Images'
@@ -49,6 +50,11 @@ with torch.no_grad():
         img = img.astype('float32')
         #Normalize image
         img /= normalization
+
+        # import matplotlib.pyplot as plt;plt.ion()
+        # plt.imshow(img)
+        # print(img.max())
+        # breakpoint()
 
         #Transform image
         img = transform(img)

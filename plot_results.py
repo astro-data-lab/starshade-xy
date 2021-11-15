@@ -4,9 +4,10 @@ import h5py
 import os
 from mpl_toolkits.axes_grid1 import ImageGrid
 
-data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+# data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+data_run = 'run__11_15_21_b__data_5s_bin1__spiders__median'
 
-model = 'New'
+model = 'Wide'
 
 do_save = [False, True][0]
 

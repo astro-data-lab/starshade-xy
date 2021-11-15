@@ -46,6 +46,7 @@ class Experiment_Image_Processor(object):
             'is_median':        False,
             'base_num_pts':     96,
             'image_pad':        10,
+            'num_pixel_base':   250,
             ### Truth Sensor ###
             'image_center':     None,
             'sensing_method':   'model',        #Options: ['model', 'centroid']
@@ -77,7 +78,6 @@ class Experiment_Image_Processor(object):
         #FIXED
         pupil_mag = 1.764
         pixel_size = 13e-6
-        self.num_pixel_base = 250
 
         #Derived
         self.tel_diameter = self.base_num_pts * pupil_mag*pixel_size
@@ -181,13 +181,18 @@ class Experiment_Image_Processor(object):
             #Plot
             if self.do_plot:
                 import matplotlib.pyplot as plt;plt.ion()
-                print(i, pos*1e3)
-                for j in range(img.shape[0]):
-                    plt.cla()
-                    cimg = image_util.crop_image(img[j], None, self.num_pts//2+self.image_pad)
-                    plt.imshow(cimg)
-                    print(cimg.max())
-                    breakpoint()
+                print(img.max()/0.03)
+                # print(i, pos*1e3)
+                img_extent = [self.truth.xx[0]*self.truth.pupil_mag, \
+                    self.truth.xx[-1]*self.truth.pupil_mag, \
+                    self.truth.yy[-1]*self.truth.pupil_mag, \
+                    self.truth.yy[0]*self.truth.pupil_mag]
+
+                plt.cla()
+                plt.imshow(img[0], extent=img_extent)
+                plt.plot(0, 0, 'ko')
+                plt.plot(pos[0], pos[1], 'rs')
+                breakpoint()
 
             #Store images + positions
             imgs = np.concatenate((imgs, img))

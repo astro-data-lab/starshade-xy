@@ -218,7 +218,7 @@ class Noise_Maker(object):
             self.ccd_read**2. + self.ccd_cic))
 
         #Compare SNR (mean per pixel)
-        snr = signal / noise / num_ap
+        snr = signal / noise / fwhm
 
         print(f'SNR: {snr:.2f}, Target SNR: {self.target_SNR:.2f}')
 

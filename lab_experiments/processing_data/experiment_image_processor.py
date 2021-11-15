@@ -229,7 +229,8 @@ class Experiment_Image_Processor(object):
             cimg /= 0.88
 
         #Subtract background
-        cimg -= np.median(cimg)
+        back = np.median(cimg[:10,:10])
+        cimg -= back
 
         #Get normalized median
         med = np.median(cimg / cpho[:,None,None], 0)
@@ -245,7 +246,7 @@ class Experiment_Image_Processor(object):
         fname = os.path.join(self.load_dir, f'image__{str(inum).zfill(4)}.fits')
         img, exp, pho = pfunc.get_image_data(fname, self.photo_data)
 
-        #Normalize by photometer data and suppression mean (diverging beam factor**2)
+        #Normalize by photometer data (has exp_time in it) and suppression mean (diverging beam factor**2)
         img /= pho[:,None,None] * self.cal_value
 
         return img, exp, pho

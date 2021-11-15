@@ -84,7 +84,7 @@ ccd_cic = 0.0025
 noise = np.sqrt(signal + num_ap*(ccd_dark*exp_time + \
     ccd_read**2. + ccd_cic))
 
-snr = signal/noise/num_ap
+snr = signal/noise/fwhm
 
 
 print(f'\nExposure time: {exp_time:.1f} [s], SNR: {snr:.3f} [per pixel], SNR2: {snr2:.3f}\n')

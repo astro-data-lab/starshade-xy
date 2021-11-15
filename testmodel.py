@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from cnn import CNN, StarshadeDataset   
+from cnn import CNN, StarshadeDataset
 import h5py
 import atexit
 

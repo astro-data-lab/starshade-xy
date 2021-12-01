@@ -30,7 +30,7 @@ for run in runs:
         'is_median':        True,
         'save_dir':         'Processed_Images',
         'do_save':          True,
-        # 'image_center': (116//2-5, 116//2),
+        'cal_pupil_center': (562, 469),
         # 'do_plot':True,
     }
 

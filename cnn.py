@@ -17,6 +17,11 @@ gamma = 0.8
 #Normalization (close to peak suppression / dist_scaling^2)
 normalization = 0.03
 
+#Lab to space distance conversion
+Dtel_lab = 2.201472e-3          #Telescope diameter used in simulations: quadrature_code/generate_images.py
+Dtel_space = 2.4                #Roman Telescope
+lab2space = Dtel_space / Dtel_lab
+
 class StarshadeDataset(Dataset):
 
     def __init__(self, data_dir, root_name, transform=None):
@@ -42,7 +47,7 @@ class StarshadeDataset(Dataset):
 
         #Grab the current shift and scale to space-scale
         xy = self.shifts[idx, 1:].astype(np.float32)
-        xy *= 1000
+        xy *= lab2space
 
         if self.transform:
             image = self.transform(image)

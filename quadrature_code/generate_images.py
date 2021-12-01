@@ -23,6 +23,13 @@ width = 3.0e-3
 #Number of steps
 num_steps = {'testset':20, 'trainset':50}
 
+#User options
+apod_name = 'm12p8'
+with_spiders = True
+wave = 403e-9
+num_tel_pts = 96
+tel_diameter = 2.201472e-3
+
 ############################
 
 #Loop over training and testing
@@ -47,23 +54,35 @@ for base_name in ['trainset', 'testset']:
     #Specify simulation parameters
     params = {
         ### Lab ###
-        'wave':             0.403e-6,       #Wavelength of light [m]
+        'wave':             wave,                   #Wavelength of light [m]
 
         ### Telescope ###
-        'tel_diameter':     2.201472e-3,    #Telescope aperture diameter [m]
-        'num_tel_pts':      96,             #Size of grid to calculate over pupil
-        'with_spiders':     True,           #Superimpose spiders on pupil image?
+        'tel_diameter':     tel_diameter,           #Telescope aperture diameter [m]
+        'num_tel_pts':      num_tel_pts,            #Size of grid to calculate over pupil
 
         ### Starshade ###
-        'apod_name':        'm12p8',        #Apodization profile name. Options: ['lab_ss', 'circle']
-        'num_petals':       12,             #Number of starshade petals
+        #will specify apod_name after circle is run
+        'num_petals':       12,                     #Number of starshade petals
 
         ### Saving ###
-        'do_save':          False,          #Don't save data
-        'verbose':          False,          #Silence output
+        'do_save':          False,                  #Don't save data
+        'verbose':          False,                  #Silence output
     }
 
-    #Load simulator
+    #Run unblocked image first
+    params['apod_name'] = 'circle'
+    params['circle_rad'] = 25.086e-3
+    sim = diffraq.Simulator(params)
+    sim.setup_sim()
+    cal_img = np.abs(sim.calculate_diffraction())**2
+
+    #Save image
+    cal_file = os.path.join(save_dir, 'calibration')
+    np.save(cal_file, cal_img)
+
+    #New simulator for starshade images
+    params['with_spiders'] = with_spiders
+    params['apod_name'] = apod_name
     sim = diffraq.Simulator(params)
     sim.setup_sim()
 

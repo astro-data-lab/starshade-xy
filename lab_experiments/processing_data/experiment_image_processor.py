@@ -49,6 +49,7 @@ class Experiment_Image_Processor(object):
             'num_pixel_base':   250,
             ### Truth Sensor ###
             'image_center':     None,
+            'cal_pupil_center': None,
             'sensing_method':   'model',        #Options: ['model', 'centroid']
             'cen_threshold':    0.75,           #Centroiding threshold
             'wave':             403e-9,
@@ -245,6 +246,11 @@ class Experiment_Image_Processor(object):
 
         #Threshold image
         med[med < med.mean()] = 0
+
+        #Apply round mask
+        mask = self.load_pupil_mask('round')
+        med = image_util.crop_image(med, self.cal_pupil_center, mask.shape[0]//2)
+        med[mask] = 0
 
         #Get calibration value from mean suppression (should equal diverging beam factor**2)
         self.cal_value = med[med != 0].mean()

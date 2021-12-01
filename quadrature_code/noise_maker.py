@@ -40,8 +40,6 @@ class Noise_Maker(object):
             'target_SNR':       5,              #Target SNR of peak of diffraction pattern
             'multi_SNRs':       [],             #List of target SNR
             'diff_peak':        3.615e-3,       #Peak of diffraction pattern from simulation calculation
-            'z1':               50.,            #Starshade - camera distance [m]
-            'z0':               27.455,         #Source - starshade distance [m]
             'count_rate':       200,            #Expected counts/s of peak of diffraction pattern
             'peak2mean':        0.68,           #Conversion from peak counts to mean counts in FWHM for J_0^2
             'fwhm':             28,             #Full-width at half-maximum of J_0^2
@@ -72,8 +70,9 @@ class Noise_Maker(object):
             if not os.path.exists(self.save_dir):
                 os.makedirs(self.save_dir)
 
-        #Diverging beam scaling
-        self.dist_scaling = (self.z0 / (self.z0 + self.z1))**2
+        #Get calibration value
+        cal_img = np.load(os.path.join(self.load_dir, 'calibration.npy'))
+        self.suppression_norm = cal_img[cal_img > 0].mean()
 
 ############################################
 ############################################
@@ -156,7 +155,7 @@ class Noise_Maker(object):
                 img = self.add_noise_to_image(img, peak_cnts)
 
                 #Convert to suppression
-                img *= self.diff_peak / (self.count_rate * exp_time * self.dist_scaling)
+                img *= self.diff_peak / (self.count_rate * exp_time * self.suppression_norm)
 
                 #Save
                 if self.do_save:

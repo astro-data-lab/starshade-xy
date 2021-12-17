@@ -18,7 +18,7 @@ data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
 # model_name = 'Wide'
 model_name = 'diffnorm'
 
-save_ext = '' + '_' + 'l2s'
+save_ext = ''
 
 #Directories
 data_dir = './lab_experiments/processing_data/Processed_Images'
@@ -94,6 +94,9 @@ if do_save:
     #Make sure directory exists
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
+
+    if save_ext != '':
+        save_ext = '_' + save_ext
 
     #Save data
     with h5py.File(os.path.join(save_dir, f'{data_run}__{model_name}{save_ext}.h5'), 'w') as f:

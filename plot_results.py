@@ -4,10 +4,14 @@ import h5py
 import os
 from mpl_toolkits.axes_grid1 import ImageGrid
 
-# data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
-data_run = 'run__11_15_21_b__data_5s_bin1__spiders__median'
+data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+# data_run = 'run__11_15_21_b__data_5s_bin1__spiders__median'
 
+# model = 'New'
 model = 'Wide'
+model = 'diffnorm2'
+
+ext = '' #+ '_' + 'l2s'
 
 do_save = [False, True][0]
 
@@ -15,10 +19,15 @@ results_dir = 'Test_Results'
 plot_dir = 'Plots'
 
 #Load results
-with h5py.File(os.path.join(results_dir, f'{data_run}__{model}.h5'), 'r') as f:
+with h5py.File(os.path.join(results_dir, f'{data_run}__{model}{ext}.h5'), 'r') as f:
     xerr = f['xerr'][()]
     yerr = f['yerr'][()]
     positions = f['positions'][()]
+
+# ibad = (abs(positions[:,0]) > 0.7e-3) | (abs(positions[:,1]) > 0.7e-3)
+# xerr = xerr[~ibad]
+# yerr = yerr[~ibad]
+# positions = positions[~ibad]
 
 rerr = np.hypot(xerr, yerr)
 

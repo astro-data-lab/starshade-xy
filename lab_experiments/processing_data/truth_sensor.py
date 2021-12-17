@@ -62,6 +62,12 @@ class Truth_Sensor(object):
         else:
             self.sense_func = self.sense_centroid
 
+        #Build round pupil mask
+        rr = np.hypot(*(np.indices(self.parent.img_shape) - self.parent.img_shape[0]/2))
+        self.pupil_mask = np.ones(self.parent.img_shape)
+        self.pupil_mask[rr > self.parent.physical_rad_px] = 0
+        self.mask_pts = self.pupil_mask.astype(bool).copy().flatten()
+
 ############################################
 ############################################
 
@@ -100,7 +106,7 @@ class Truth_Sensor(object):
 ############################################
 
     def off_rad(self, off):
-        return np.sqrt((self.xx - off[0])**2. + (self.yy - off[1])**2.)
+        return np.sqrt((self.xx - off[0])**2. + (self.yy - off[1])**2.)[self.mask_pts]
 
     def errfunc(self, pp, yy, ee):
         """Model residual"""
@@ -122,8 +128,8 @@ class Truth_Sensor(object):
         rr[rr == 0.] = 1e-12
         dfda = j0(self.kRz*rr)**2. / ee
         dfdxy = pp[2]*2.*j0(self.kRz*rr)*j1(self.kRz*rr)*self.kRz / rr / ee
-        dfdx = (self.xx - pp[0])*dfdxy
-        dfdy = (self.yy - pp[1])*dfdxy
+        dfdx = (self.xx[self.mask_pts] - pp[0])*dfdxy
+        dfdy = (self.yy[self.mask_pts] - pp[1])*dfdxy
         jac = np.vstack((dfdx, dfdy, dfda)).T
         return jac
 
@@ -131,6 +137,9 @@ class Truth_Sensor(object):
 
         #Flatten image and add gain
         img = in_img.flatten() * self.ccd_gain
+
+        #Add mask
+        img = img[self.mask_pts]
 
         #Zero out negative values
         img[img < 0.] = 0.
@@ -173,6 +182,29 @@ class Truth_Sensor(object):
         #Values to return
         pos = ans[:-1]
         err = np.sqrt(cov.diagonal()[:2])
+
+        if [False, True][0]:
+            #Reshape images
+            plt_img = in_img * self.ccd_gain * self.pupil_mask
+            plt_fit = self.fitfunc_no_mask(ans).reshape(in_img.shape) * self.pupil_mask
+
+            import matplotlib.pyplot as plt;plt.ion()
+            xind,yind = np.unravel_index(np.argmax(plt_img), plt_img.shape)
+
+            # plt.figure()
+            plt.cla()
+            plt.plot(plt_img[xind], 'b')
+            plt.plot(plt_fit[xind],'b--')
+            plt.plot(plt_img[:,yind],'r')
+            plt.plot(plt_fit[:,yind],'r--')
+
+            # plt.figure()
+            # plt.imshow(abs(plt_img-plt_fit))
+            # img_extent = [self.xx[0], self.xx[-1], self.yy[-1], self.yy[0]]
+            # plt.imshow(plt_img, extent=img_extent)
+            # plt.plot(pos[0], pos[1], 'rs')
+
+            breakpoint()
 
         #Convert to physical units [m]
         pos *= self.pupil_mag

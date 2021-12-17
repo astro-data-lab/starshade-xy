@@ -52,6 +52,7 @@ class Experiment_Image_Processor(object):
             'cal_pupil_center': None,
             'sensing_method':   'model',        #Options: ['model', 'centroid']
             'cen_threshold':    0.75,           #Centroiding threshold
+            'physical_rad':     2.5e-3,         #Radius of physical aperture
             'wave':             403e-9,
             'ss_radius':        10.1e-3*np.sqrt(680/638),
             'z1':               50.,
@@ -82,6 +83,7 @@ class Experiment_Image_Processor(object):
 
         #Derived
         self.tel_diameter = self.base_num_pts * pupil_mag*pixel_size
+        self.physical_rad_px = self.physical_rad / (pupil_mag*pixel_size)
 
     def setup(self):
 

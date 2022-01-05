@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from cnn import CNN, StarshadeDataset   
+from cnn import CNN, StarshadeDataset
 import h5py
 import atexit
 
@@ -13,7 +13,7 @@ do_save = [False, True][1]
 
 data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
 
-model_name = 'New'
+model_name = 'WideBig'
 
 #Directories
 data_dir = './lab_experiments/processing_data/Processed_Images'
@@ -57,7 +57,7 @@ with torch.no_grad():
         #Get solved position
         output = model(img)
         #Compare to truth (after scaling to space-scale)
-        diff = output - 1000 * pos
+        diff = output - 1090.1796616082331 * pos
 
         cur_x = diff[0,0].item()
         cur_y = diff[0,1].item()

@@ -5,8 +5,9 @@ import os
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+# data_run = 'Wide_Noisy_Data'
 
-model = 'New'
+model = 'WideBig'
 
 do_save = [False, True][0]
 
@@ -44,7 +45,7 @@ lim = 1
 vmax = np.abs(errs).max()
 for i in range(3):
     vmin = [-vmax, 0][int(i==2)]
-    out = grid[i].scatter(positions[:,0]*1e3, positions[:,1]*1e3, c=errs[i], \
+    out = grid[i].scatter(positions[:,0]*1090.1796616082331, positions[:,1]*1090.1796616082331, c=errs[i], \
         s=6, vmin=vmin, vmax=vmax,cmap=plt.cm.jet)
     grid[i].plot(0,0, 'r+')
     cbar = plt.colorbar(out, cax=grid[i].cax, orientation='horizontal', \

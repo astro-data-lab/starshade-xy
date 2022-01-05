@@ -15,13 +15,13 @@ import diffraq
 import os
 
 #Save directory
-base_dir = 'New_Data'
+base_dir = 'Wide_Big_Data'
 
 #Width of motion grid [m]
-width = 3.0e-3
+width = 3.4e-3
 
 #Number of steps
-num_steps = {'testset':20, 'trainset':50}
+num_steps = {'testset':30, 'trainset':80}
 
 ############################
 

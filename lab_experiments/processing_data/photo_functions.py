@@ -153,14 +153,11 @@ def load_image(fname):
 
     return data, exp, times
 
-def get_image_data(fname, photo_data):
+def get_image_data(fname):
     #Load image
     data, exp, times = load_image(fname)
 
-    #Get photometer data
-    pho = get_photometer_values(*photo_data, times, exp)
-
-    return data, exp, pho
+    return data, exp
 
 ############################################
 ############################################

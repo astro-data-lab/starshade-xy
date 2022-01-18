@@ -14,7 +14,7 @@ lr = 1e-3
 num_epochs = 15
 gamma = 0.8
 
-#Normalization (close to peak suppression / dist_scaling^2)
+#Normalization (close to peak suppression / calibration mask average)
 normalization = 0.03
 
 #Lab to space distance conversion
@@ -104,12 +104,12 @@ def test(model, testloader):
 def main():
 
     #Saving
-    save_name = 'New'
-    save_dir = 'models'
+    save_name = 'Newest'
+    save_dir = './models'
 
     #Training
     train_run = 'trainset'
-    train_dir_ext = 'New_Noisy_Data'
+    train_dir_ext = 'Newest_Data_Noisy'
 
     #Testing
     test_run = 'testset'
@@ -118,7 +118,7 @@ def main():
     ################################
 
     #Build directories
-    data_base_dir = 'quadrature_code/Simulated_Images'
+    data_base_dir = './quadrature_code/Simulated_Images'
     train_dir = os.path.join(data_base_dir, train_dir_ext)
     test_dir = os.path.join(data_base_dir, test_dir_ext)
 

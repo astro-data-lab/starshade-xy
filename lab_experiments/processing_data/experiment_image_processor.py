@@ -36,7 +36,6 @@ class Experiment_Image_Processor(object):
             'xtras_dir':        '../../quadrature_code/xtras',
             'save_dir':         'Processed_Images',
             'run':              '',
-            'cal_ext':          '',             #Extension to calibration file
             'session':          '',
             'do_round_mask':    False,
             ### Saving ###
@@ -49,15 +48,14 @@ class Experiment_Image_Processor(object):
             'num_pixel_base':   250,
             ### Truth Sensor ###
             'image_center':     None,
-            'cal_pupil_center': None,
             'sensing_method':   'model',        #Options: ['model', 'centroid']
             'cen_threshold':    0.75,           #Centroiding threshold
             'physical_rad':     2.5e-3,         #Radius of physical aperture
             'wave':             403e-9,
-            'ss_radius':        10.1e-3*np.sqrt(680/638),
+            'ss_radius':        10.5e-3*np.sqrt(680/638),
             'z1':               50.,
             'ccd_dark':         7e-4,           #Dark noise [e/px/s]
-            'ccd_read':         3.20,           #Read noise [e/px/frame]
+            'ccd_read':         4.78,           #Read noise [e/px/frame]
             'ccd_cic':          0.0025,         #CIC noise [e/px/frame]
             'ccd_gain':         0.768,          #inverse gain [ct/e]
         }
@@ -74,8 +72,6 @@ class Experiment_Image_Processor(object):
 
         #Directories
         self.load_dir = os.path.join(self.data_dir, self.session, self.run)
-        if self.cal_ext != '':
-            self.cal_ext = '_' + self.cal_ext
 
         #FIXED
         pupil_mag = 1.764
@@ -108,14 +104,13 @@ class Experiment_Image_Processor(object):
 
     def run_script(self):
 
-        #Load calibration
-        self.load_calibration()
-
         #Load image record
         self.record = np.genfromtxt(os.path.join(self.load_dir, 'record.csv'), delimiter=',')
 
         #Prepare true position
-        self.true_position = np.empty((len(self.record),2))
+        self.num_imgs = len(self.record)
+        self.true_position = np.empty((self.num_imgs,2))
+        self.true_amplitude = np.zeros(self.num_imgs)
 
         #Run None mask
         self.process_images('none')
@@ -141,13 +136,13 @@ class Experiment_Image_Processor(object):
 
         #Loop through steps and get images and exposure times + backgrounds
         imgs = np.empty((0,) + self.img_shape)
-        phos = np.empty((0,))
+        amps = np.empty((0,))
         locs = np.empty((0, 2))
         meta = np.empty((0, 3))
-        for i in range(len(self.record)):
+        for i in range(self.num_imgs):
 
             #Get image
-            img, exp, pho = self.get_image(int(self.record[i][0]))
+            img, exp = self.get_image(int(self.record[i][0]))
 
             #Get excess regions
             nbk = 40//self.binning
@@ -165,7 +160,6 @@ class Experiment_Image_Processor(object):
             if self.is_median:
                 nframe = img.shape[0]
                 img = np.array([np.median(img, 0)])
-                pho = np.array([np.median(pho)])
             else:
                 nframe = 1
 
@@ -174,18 +168,19 @@ class Experiment_Image_Processor(object):
                 #Position guess (flip x-sign b/c optics)
                 pos0 = self.record[i][1:] * np.array([-1, 1])
                 #Get true position
-                pos = self.truth.get_position(img, exp, pos0)
+                pos, amp = self.truth.get_position(img, exp, pos0=pos0)
                 #Save
                 self.true_position[i] = pos
+                self.true_amplitude[i] = amp
             else:
                 #Get stored true position
                 pos = self.true_position[i]
+                amp = self.true_amplitude[i]
 
             #Plot
             if self.do_plot:
                 import matplotlib.pyplot as plt;plt.ion()
-                print(img.max()/0.03)
-                # print(i, pos*1e3)
+                print(i, img.max()/amp)
                 img_extent = [self.truth.xx[0]*self.truth.pupil_mag, \
                     self.truth.xx[-1]*self.truth.pupil_mag, \
                     self.truth.yy[-1]*self.truth.pupil_mag, \
@@ -193,13 +188,14 @@ class Experiment_Image_Processor(object):
 
                 plt.cla()
                 plt.imshow(img[0], extent=img_extent)
-                plt.plot(0, 0, 'ko')
-                plt.plot(pos[0], pos[1], 'rs')
+                plt.plot(0, 0, 'kx')
+                plt.plot(0, 0, 'k+')
+                plt.plot(pos[0], pos[1], 'ro')
                 breakpoint()
 
             #Store images + positions
             imgs = np.concatenate((imgs, img))
-            phos = np.concatenate((phos, pho))
+            amps = np.concatenate((amps, [amp]))
             locs = np.concatenate((locs, [pos]*img.shape[0]))
             #Store exposure time + backgrounds + number of frames
             meta = np.concatenate((meta, [[exp, back, nframe]]*img.shape[0]))
@@ -210,7 +206,7 @@ class Experiment_Image_Processor(object):
 
         #Save Data
         if self.do_save:
-            self.save_data(mask_type, imgs, phos, locs, meta)
+            self.save_data(mask_type, imgs, amps, locs, meta)
             if mask_type == 'none':
                 self.save_truths()
 
@@ -225,56 +221,20 @@ class Experiment_Image_Processor(object):
 ####    Misc Functions ####
 ############################################
 
-    def load_calibration(self):
-
-        #Get photometer data
-        cal_dir = self.load_dir.split(self.run)[0]
-        self.photo_data = pfunc.load_photometer_data(cal_dir, None)
-
-        #Load calibration data
-        fname = os.path.join(cal_dir, f'cal_sup{self.cal_ext}.fits')
-        cimg, cexp, cpho = pfunc.get_image_data(fname, self.photo_data)
-
-        #Kluge for 6_1_21 b/c overexposed data
-        if self.session == 'run__6_01_21':
-            cimg /= 0.88
-
-        #Subtract background
-        back = np.median(cimg[:10,:10])
-        cimg -= back
-
-        #Get normalized median
-        med = np.median(cimg / cpho[:,None,None], 0)
-
-        #Threshold image
-        med[med < med.mean()] = 0
-
-        #Apply round mask
-        mask = self.load_pupil_mask('round')
-        med = image_util.crop_image(med, self.cal_pupil_center, mask.shape[0]//2)
-        med[mask] = 0
-
-        #Get calibration value from mean suppression (should equal diverging beam factor**2)
-        self.cal_value = med[med != 0].mean()
-
     def get_image(self, inum):
         #Get data
         fname = os.path.join(self.load_dir, f'image__{str(inum).zfill(4)}.fits')
-        img, exp, pho = pfunc.get_image_data(fname, self.photo_data)
+        img, exp = pfunc.get_image_data(fname)
 
-        #Normalize by photometer data (has exp_time in it) and suppression mean (diverging beam factor**2)
-        img /= pho[:,None,None] * self.cal_value
+        return img, exp
 
-        return img, exp, pho
-
-    def save_data(self, mask_type, imgs, phos, locs, meta):
+    def save_data(self, mask_type, imgs, amps, locs, meta):
 
         ext = ['', '__median'][int(self.is_median)]
         fname = os.path.join(self.save_dir, \
             f'{self.session}__{self.run}__{mask_type}{ext}.h5')
 
         with h5py.File(fname, 'w') as f:
-            f.create_dataset('cal_value', data=self.cal_value)
             f.create_dataset('num_tel_pts', data=self.num_pts)
             f.create_dataset('base_num_pts', data=self.base_num_pts)
             f.create_dataset('binning', data=self.binning)
@@ -282,8 +242,8 @@ class Experiment_Image_Processor(object):
             f.create_dataset('tel_diameter', data=self.tel_diameter)
             f.create_dataset('meta', data=meta, compression=8)
             f.create_dataset('positions', data=locs, compression=8)
+            f.create_dataset('amplitudes', data=amps, compression=8)
             f.create_dataset('images', data=imgs, compression=8)
-            f.create_dataset('phos', data=phos, compression=8)
 
     def save_truths(self):
         ext = ['', '__median'][int(self.is_median)]
@@ -292,6 +252,7 @@ class Experiment_Image_Processor(object):
 
         with h5py.File(fname, 'w') as f:
             f.create_dataset('true_position', data=self.true_position)
+            f.create_dataset('true_amplitude', data=self.true_amplitude)
 
     def load_truths(self):
         ext = ['', '__median'][int(self.is_median)]
@@ -300,6 +261,7 @@ class Experiment_Image_Processor(object):
 
         with h5py.File(fname, 'r') as f:
             self.true_position = f['true_position'][()]
+            self.true_amplitude = f['true_amplitude'][()]
 
 ############################################
 ############################################

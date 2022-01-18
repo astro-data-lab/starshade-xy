@@ -14,8 +14,8 @@ import numpy as np
 
 snrs = np.concatenate((np.arange(0.05, 1, 0.125), [3,5]))
 
-load_dir = 'New_Data'
-save_dir = 'New_Noisy_Data'
+load_dir = 'Newest_Data'
+save_dir = load_dir + '_Noisy'
 
 for base_name in ['trainset', 'testset']:
 
@@ -30,9 +30,10 @@ for base_name in ['trainset', 'testset']:
             'save_dir_base':        save_dir,
             'do_save':              True,
             ### Observation ###
-            'count_rate':           200,
+            'count_rate':           7,
             'multi_SNRs':           snrs,
-
+            ### Numerics ###
+            'seed':                 888,
     }
 
     #Load instance of noise maker

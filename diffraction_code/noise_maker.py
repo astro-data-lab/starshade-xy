@@ -39,7 +39,7 @@ class Noise_Maker(object):
             'peak2mean':        0.67,           #Conversion from peak counts to mean counts in FWHM for J_0^2
             'fwhm':             10,             #Full-width at half-maximum of J_0^2
             ### Detector ###
-            'ccd_read':         3.20,           #Detector read noise [e-/pixel/frame]
+            'ccd_read':         4.78,           #Detector read noise [e-/pixel/frame]
             'ccd_gain':         0.768,          #Detector inverse-gain [e-/count]
             'ccd_dark':         7e-4,           #Detector dark noise [e-/pixel/s]
             'ccd_cic':          0.0025,         #Detector CIC noise [e/pixel/frame]

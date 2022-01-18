@@ -75,17 +75,22 @@ class Truth_Sensor(object):
 ####	Main Function ####
 ############################################
 
-    def get_position(self, img, exp_time, pos0, do_plot=False):
+    def get_position(self, img, exp_time, pos0=None, do_plot=False):
         #Get image error
         det_var = self.ccd_dark*exp_time + self.ccd_cic**2. + \
             self.ccd_read**2.
+
+        #Get position guess
+        if pos0 is None:
+            ind0 = np.argmax(img)
+            pos0 = np.array([self.xx[ind0], self.yy[ind0]])*self.pupil_mag
 
         #Take median image (if not already done)
         if img.ndim == 3:
             img = np.median(img, 0)
 
         #Get true position
-        tru, err, is_good = self.sense_func(img, det_var, pos0)
+        tru, err, is_good, amp = self.sense_func(img, det_var, pos0)
 
         #Debug
         if do_plot:
@@ -96,7 +101,7 @@ class Truth_Sensor(object):
             print('\n!Bad Truth Position!\n')
             breakpoint()
 
-        return tru
+        return tru, amp
 
 ############################################
 ############################################
@@ -145,7 +150,7 @@ class Truth_Sensor(object):
         img[img < 0.] = 0.
 
         #Calculate noise
-        noise = np.sqrt(img + det_var)
+        noise = np.sqrt(img*0 + det_var)
 
         #Get initial guess (convert to pixels)
         off0 = off_guess / self.pupil_mag / self.binning
@@ -160,7 +165,7 @@ class Truth_Sensor(object):
 
         #Check for clean exit
         if not out.success:
-            return -1*np.ones(2), -1*np.ones(2), False
+            return -1*np.ones(2), -1*np.ones(2), False, -1
 
         #Get output Jacobian matrix
         out_jac = out.jac
@@ -183,6 +188,9 @@ class Truth_Sensor(object):
         pos = ans[:-1]
         err = np.sqrt(cov.diagonal()[:2])
 
+        #Amplitude
+        amp = ans[-1] / self.ccd_gain
+
         if [False, True][0]:
             #Reshape images
             plt_img = in_img * self.ccd_gain * self.pupil_mask
@@ -198,19 +206,13 @@ class Truth_Sensor(object):
             plt.plot(plt_img[:,yind],'r')
             plt.plot(plt_fit[:,yind],'r--')
 
-            # plt.figure()
-            # plt.imshow(abs(plt_img-plt_fit))
-            # img_extent = [self.xx[0], self.xx[-1], self.yy[-1], self.yy[0]]
-            # plt.imshow(plt_img, extent=img_extent)
-            # plt.plot(pos[0], pos[1], 'rs')
-
             breakpoint()
 
         #Convert to physical units [m]
         pos *= self.pupil_mag
         err *= self.pupil_mag
 
-        return pos, err, True
+        return pos, err, True, amp
 
 ############################################
 ############################################
@@ -253,7 +255,7 @@ class Truth_Sensor(object):
         pos *= self.pupil_mag
         err *= self.pupil_mag
 
-        return pos, err, True
+        return pos, err, True, 1
 
     def get_threshold_inds(self, II):
         #Calculate noise threshold from max of image. Ignore all pixels below threshold

@@ -39,7 +39,7 @@ class Truth_Sensor(object):
             'z1':               50.,
             'mask':             'none',         #Add spider masks in future
             'ccd_dark':         7e-4,           #Dark noise [e/px/s]
-            'ccd_read':         3.20,           #Read noise [e/px/frame]
+            'ccd_read':         4.78,           #Read noise [e/px/frame]
             'ccd_cic':          0.0025,         #CIC noise [e/px/frame]
             'ccd_gain':         0.768,          #inverse gain [ct/e]
         }

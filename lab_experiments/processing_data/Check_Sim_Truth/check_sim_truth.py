@@ -39,7 +39,7 @@ class Sim_Checker(object):
             'ss_radius':        10.1e-3*np.sqrt(680/638),
             'z1':               50.,
             'ccd_dark':         7e-4,           #Dark noise [e/px/s]
-            'ccd_read':         3.20,           #Read noise [e/px/frame]
+            'ccd_read':         4.78,           #Read noise [e/px/frame]
             'ccd_cic':          0.0025,         #CIC noise [e/px/frame]
             'ccd_gain':         0.768,          #inverse gain [ct/e]
         }

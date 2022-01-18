@@ -15,10 +15,10 @@ import diffraq
 import os
 
 #Save directory
-base_dir = 'New_Data'
+base_dir = 'Newest_Data'
 
-#Width of motion grid [m]
-width = 3.0e-3
+#Width of motion grid in Space coordinates [m]
+grid_width_space = 3.
 
 #Number of steps
 num_steps = {'testset':20, 'trainset':50}
@@ -28,9 +28,23 @@ apod_name = 'm12p8'
 with_spiders = True
 wave = 403e-9
 num_tel_pts = 96
-tel_diameter = 2.201472e-3
+#Telescope sizes in Lab and Space coordinates [m] (sets scaling factor)
+Dtel_lab = 2.201472e-3
+Dtel_space = 2.4
+#Random number generator seed
+seed = 888
 
 ############################
+
+#Get random number generatore
+rng = np.random.default_rng(seed)
+
+#Lab to space scaling
+lab2space = Dtel_space / Dtel_lab
+space2lab = 1/lab2space
+
+#Lab width
+grid_width_lab = grid_width_space * space2lab
 
 #Loop over training and testing
 for base_name in ['trainset', 'testset']:
@@ -46,7 +60,7 @@ for base_name in ['trainset', 'testset']:
     nsteps = num_steps[base_name]
 
     #Spacing between position steps [m]
-    dstep = width / nsteps
+    dstep = grid_width_lab / nsteps
 
     #Radius of random perturbations [m]
     rad = np.sqrt(2) / 2 * dstep
@@ -57,7 +71,7 @@ for base_name in ['trainset', 'testset']:
         'wave':             wave,                   #Wavelength of light [m]
 
         ### Telescope ###
-        'tel_diameter':     tel_diameter,           #Telescope aperture diameter [m]
+        'tel_diameter':     Dtel_lab,               #Telescope aperture diameter [m]
         'num_tel_pts':      num_tel_pts,            #Size of grid to calculate over pupil
 
         ### Starshade ###
@@ -69,7 +83,7 @@ for base_name in ['trainset', 'testset']:
         'verbose':          False,                  #Silence output
     }
 
-    #Run unblocked image first
+    #Run unblocked image first (lab calibration)
     params['apod_name'] = 'circle'
     params['circle_rad'] = 25.086e-3
     sim = diffraq.Simulator(params)
@@ -87,7 +101,7 @@ for base_name in ['trainset', 'testset']:
     sim.setup_sim()
 
     #Build steps
-    steps = np.linspace(-width/2, width/2, num=nsteps)
+    steps = np.linspace(-grid_width_lab/2, grid_width_lab/2, num=nsteps)
 
     #Containers
     images = np.empty((0, sim.num_pts, sim.num_pts))
@@ -96,7 +110,11 @@ for base_name in ['trainset', 'testset']:
     #Create new csv file
     csv_file = os.path.join(save_dir, base_name + '.csv')
     with open(csv_file, 'w') as f:
-        pass
+        #Write out header
+        meta_hdr = '#,grid_width_space,apod_name,with_spiders,wave,num_tel_pts,Dtel_lab,Dtel_space,seed\n'
+        meta_val = f'#,{grid_width_space},{apod_name},{with_spiders},{wave},{num_tel_pts},{Dtel_lab},{Dtel_space},{seed}\n'
+        f.write(meta_hdr)
+        f.write(meta_val)
 
     #Loop over steps in each axis and calculate image
     i = 0
@@ -105,8 +123,8 @@ for base_name in ['trainset', 'testset']:
         for y in steps:
 
             #Set shift of telescope
-            nx = x + 2 * rad * (np.random.random_sample() - 0.5)
-            ny = y + 2 * rad * (np.random.random_sample() - 0.5)
+            nx = x + 2 * rad * (rng.random() - 0.5)
+            ny = y + 2 * rad * (rng.random() - 0.5)
             sim.tel_shift = [nx, ny]
 
             #Get diffraction and convert to intensity

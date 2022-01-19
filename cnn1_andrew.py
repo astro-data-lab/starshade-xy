@@ -2,12 +2,14 @@ import numpy as np
 import os
 import torch
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
 import torch.nn as nn
 import torch.nn.functional as F
+import time
+from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-import time
+from blitz.modules import BayesianLinear
+from blitz.utils import variational_estimator
 
 #Saving
 save_name = 'Newest'
@@ -24,8 +26,8 @@ test_dir_ext = train_dir_ext
 #Training parameters
 img_size = 116
 lr = 1e-3
-num_epochs = 15
-gamma = 0.8
+num_epochs = 5
+batch_size = 8
 
 #Normalization (close to peak suppression / calibration mask average)
 normalization = 0.03
@@ -65,25 +67,27 @@ class StarshadeDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        sample = {'image': image, 'xy': xy}
+        sample = [image, xy]
         return sample
 
+@variational_estimator
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
         self.conv1 = nn.Conv2d(1, 8, 3, 1)
         self.conv2 = nn.Conv2d(8, 16, 3, 1)
         self.fc1 = nn.Linear(16 * (((img_size - 2) // 2 - 2) // 2) * (((img_size - 2) // 2 - 2) // 2), 128)
-        self.fc2 = nn.Linear(128, 2)
+        self.fc2 = BayesianLinear(128, 2)
 
-    def forward(self, X):
-        X = self.conv1(X)
-        X = F.max_pool2d(X, 2)
-        X = F.relu(X)
-        X = self.conv2(X)
-        X = F.max_pool2d(X, 2)
-        X = F.relu(X)
-        X = torch.flatten(X, 1)
+    def forward(self, X1):
+        X1 = self.conv1(X1)
+        X1 = F.max_pool2d(X1, 2)
+        X1 = F.relu(X1)
+        X1 = self.conv2(X1)
+        X1 = F.max_pool2d(X1, 2)
+        X1 = F.relu(X1)
+        X1 = torch.flatten(X1, 1)
+        X = X1
         X = self.fc1(X)
         X = F.relu(X)
         X = self.fc2(X)
@@ -94,12 +98,13 @@ def train(model, trainloader, optimizer, epoch):
     model.train()
     for batch_idx, batch in enumerate(trainloader):
         optimizer.zero_grad()
-        output = model(batch['image'])
-        loss = F.mse_loss(output, batch['xy'])
+        # output = model(batch[0])
+        # loss = F.mse_loss(output, batch[1])
+        loss = model.sample_elbo(inputs=batch[0], labels=batch[1], criterion=torch.nn.MSELoss(), sample_nbr=2)
         loss.backward()
         optimizer.step()
         if batch_idx % 25 == 0:
-            print(f'Train Epoch: {epoch} [{batch_idx*len(batch["xy"])}/{len(trainloader.dataset)}]\tLoss: {loss.item()/len(batch["xy"])}')
+            print(f'Train Epoch: {epoch} [{batch_idx*len(batch[1])}/{len(trainloader.dataset)}]\tLoss: {loss.item()/len(batch[1])}')
 
 
 def test(model, testloader):
@@ -107,8 +112,10 @@ def test(model, testloader):
     test_loss = 0
     with torch.no_grad():
         for batch in testloader:
-            output = model(batch['image'])
-            test_loss += F.mse_loss(output, batch['xy']).item()
+            # output = model(batch[0], batch[1])
+            # test_loss += F.mse_loss(output, batch[2]).item()
+            output = model(batch[0])
+            test_loss += F.mse_loss(output, batch[1]).item()
 
     test_loss /= len(testloader.dataset)
     print(f'\nTest Set: Average Loss {test_loss}\n')
@@ -117,7 +124,7 @@ def test(model, testloader):
 def main():
 
     #Build directories
-    data_base_dir = './quadrature_code/Simulated_Images'
+    data_base_dir = 'quadrature_code/Simulated_Images'
     train_dir = os.path.join(data_base_dir, train_dir_ext)
     test_dir = os.path.join(data_base_dir, test_dir_ext)
 
@@ -137,7 +144,7 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-2)
 
     #Build scheduler
-    scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
+    scheduler = OneCycleLR(optimizer, lr, total_steps=num_epochs)
 
     #Loop through epochs
     for epoch in range(num_epochs):

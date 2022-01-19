@@ -2,12 +2,13 @@ import numpy as np
 import os
 import torch
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
 import torch.nn as nn
 import torch.nn.functional as F
+import time
+from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-import time
+import h5py
 
 #Saving
 save_name = 'Newest'
@@ -24,8 +25,8 @@ test_dir_ext = train_dir_ext
 #Training parameters
 img_size = 116
 lr = 1e-3
-num_epochs = 15
-gamma = 0.8
+num_epochs = 3
+batch_size = 8
 
 #Normalization (close to peak suppression / calibration mask average)
 normalization = 0.03
@@ -56,6 +57,8 @@ class StarshadeDataset(Dataset):
         img_path = os.path.join(self.root_dir, str(idx).zfill(6) + '.npy')
         image = np.load(img_path).astype('float32')
         #Normalize the image
+        image[image > 9000 * np.median(image)] = 0
+        # image /= (0.5 + np.random.rand()) * normalization
         image /= normalization
 
         #Grab the current shift and scale to space-scale
@@ -65,7 +68,7 @@ class StarshadeDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        sample = {'image': image, 'xy': xy}
+        sample = [image, xy]
         return sample
 
 class CNN(nn.Module):
@@ -73,33 +76,41 @@ class CNN(nn.Module):
         super(CNN, self).__init__()
         self.conv1 = nn.Conv2d(1, 8, 3, 1)
         self.conv2 = nn.Conv2d(8, 16, 3, 1)
-        self.fc1 = nn.Linear(16 * (((img_size - 2) // 2 - 2) // 2) * (((img_size - 2) // 2 - 2) // 2), 128)
+        self.conv3 = nn.Conv2d(16, 32, 3, 1)
+        self.fc1 = nn.Linear(32 * ((((img_size - 2) // 2 - 2) // 2 - 2) // 2) ** 2, 128)
         self.fc2 = nn.Linear(128, 2)
 
-    def forward(self, X):
-        X = self.conv1(X)
-        X = F.max_pool2d(X, 2)
-        X = F.relu(X)
-        X = self.conv2(X)
-        X = F.max_pool2d(X, 2)
-        X = F.relu(X)
-        X = torch.flatten(X, 1)
+    def forward(self, X1):
+        X1 = self.conv1(X1)
+        X1 = F.max_pool2d(X1, 2)
+        X1 = F.relu(X1)
+        X1 = self.conv2(X1)
+        X1 = F.max_pool2d(X1, 2)
+        X1 = F.relu(X1)
+        X1 = self.conv3(X1)
+        X1 = F.max_pool2d(X1, 2)
+        X1 = F.relu(X1)
+        X1 = torch.flatten(X1, 1)
+        X = X1
         X = self.fc1(X)
         X = F.relu(X)
         X = self.fc2(X)
         return X
 
 
-def train(model, trainloader, optimizer, epoch):
+def train(model, trainloader, optimizer, scheduler, epoch):
     model.train()
     for batch_idx, batch in enumerate(trainloader):
         optimizer.zero_grad()
-        output = model(batch['image'])
-        loss = F.mse_loss(output, batch['xy'])
+        # output = model(batch[0], batch[1])
+        # loss = F.mse_loss(output, batch[2])
+        output = model(batch[0])
+        loss = F.mse_loss(output, batch[1])
         loss.backward()
         optimizer.step()
+        scheduler.step()
         if batch_idx % 25 == 0:
-            print(f'Train Epoch: {epoch} [{batch_idx*len(batch["xy"])}/{len(trainloader.dataset)}]\tLoss: {loss.item()/len(batch["xy"])}')
+            print(f'Train Epoch: {epoch} [{batch_idx*len(batch[1])}/{len(trainloader.dataset)}]\tLoss: {loss.item()/len(batch[1])}')
 
 
 def test(model, testloader):
@@ -107,8 +118,35 @@ def test(model, testloader):
     test_loss = 0
     with torch.no_grad():
         for batch in testloader:
-            output = model(batch['image'])
-            test_loss += F.mse_loss(output, batch['xy']).item()
+            # output = model(batch[0], batch[1])
+            # test_loss += F.mse_loss(output, batch[2]).item()
+            output = model(batch[0])
+            test_loss += F.mse_loss(output, batch[1]).item()
+
+    test_loss /= len(testloader.dataset)
+    print(f'\nTest Set: Average Loss {test_loss}\n')
+
+
+def testout(model, testloader):
+    model.eval()
+
+    test_loss = 0
+    xerr = np.array([])
+    yerr = np.array([])
+    positions = np.zeros((len(testloader.dataset), 2))
+    with torch.no_grad():
+        for i, batch in enumerate(testloader):
+            # output = model(batch[0], batch[1])
+            # test_loss += F.mse_loss(output, batch[2]).item()
+            output = model(batch[0])
+            diff = output - batch[1]
+            cur_x = diff[:,0].detach().numpy()
+            cur_y = diff[:,1].detach().numpy()
+            xerr = np.concatenate((xerr, cur_x))
+            yerr = np.concatenate((yerr, cur_y))
+            positions[8*i:8*i+8] = batch[1]
+
+            test_loss += F.mse_loss(output, batch[1]).item()
 
     test_loss /= len(testloader.dataset)
     print(f'\nTest Set: Average Loss {test_loss}\n')
@@ -117,7 +155,7 @@ def test(model, testloader):
 def main():
 
     #Build directories
-    data_base_dir = './quadrature_code/Simulated_Images'
+    data_base_dir = 'quadrature_code/Simulated_Images'
     train_dir = os.path.join(data_base_dir, train_dir_ext)
     test_dir = os.path.join(data_base_dir, test_dir_ext)
 
@@ -126,28 +164,29 @@ def main():
 
     #Load training data
     trainset = StarshadeDataset(train_dir, train_run, transform=transform)
-    trainloader = DataLoader(trainset, batch_size=8, shuffle=True)
+    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
 
     #Load testing data
     testset = StarshadeDataset(test_dir, test_run, transform=transform)
-    testloader = DataLoader(testset, batch_size=8, shuffle=False)
+    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False)
 
     #Create model
     model = CNN()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-2)
 
     #Build scheduler
-    scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
+    scheduler = OneCycleLR(optimizer, lr, steps_per_epoch=len(trainloader.dataset) // batch_size + 1, epochs=num_epochs)
 
     #Loop through epochs
     for epoch in range(num_epochs):
         #Train
-        train(model, trainloader, optimizer, epoch)
+        train(model, trainloader, optimizer, scheduler, epoch)
         #Test
         test(model, testloader)     #TODO: is it necessary to test here?
         #Step scheduler
-        scheduler.step()
+        # scheduler.step()
 
+    testout(model, testloader)
     #Save model
     torch.save(model.state_dict(), os.path.join(save_dir, save_name + '.pt'))
 

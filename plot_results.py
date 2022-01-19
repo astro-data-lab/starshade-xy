@@ -6,8 +6,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
 
-model = 'Wide'
-model = 'diffnorm2'
+model = 'Newest'
 
 ext = ''
 
@@ -18,10 +17,11 @@ plot_dir = 'Plots'
 
 #Load results
 with h5py.File(os.path.join(results_dir, f'{data_run}__{model}{ext}.h5'), 'r') as f:
-    xerr = f['xerr'][()]
-    yerr = f['yerr'][()]
-    positions = f['positions'][()]
+    diff = f['difference'][()]
+    truth = f['positions'][()]
 
+xerr = diff[:,0]
+yerr = diff[:,1]
 rerr = np.hypot(xerr, yerr)
 
 if not do_save:
@@ -47,7 +47,7 @@ lim = 1
 vmax = np.abs(errs).max()
 for i in range(3):
     vmin = [-vmax, 0][int(i==2)]
-    out = grid[i].scatter(positions[:,0]*1e3, positions[:,1]*1e3, c=errs[i], \
+    out = grid[i].scatter(truth[:,0]*1e3, truth[:,1]*1e3, c=errs[i], \
         s=6, vmin=vmin, vmax=vmax,cmap=plt.cm.jet)
     grid[i].plot(0,0, 'r+')
     cbar = plt.colorbar(out, cax=grid[i].cax, orientation='horizontal', \

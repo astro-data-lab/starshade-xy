@@ -290,7 +290,7 @@ class Noise_Maker(object):
             assert(abs(calc_snr - snr)/snr < 0.15)
 
             #Plot
-            if [False, True][0]:
+            if [False, True][1]:
                 print(f'SNR: {calc_snr:.2f}, Target SNR: {self.target_SNR:.2f}, Exp Time: {exp_time:.2f} [s]')
 
                 import matplotlib.pyplot as plt; plt.ion()

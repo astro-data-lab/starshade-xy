@@ -126,10 +126,6 @@ for base_name in ['trainset', 'testset']:
     #Build steps
     steps = np.linspace(-grid_width_lab/2, grid_width_lab/2, num=nsteps)
 
-    #Containers
-    images = np.empty((0, sim.num_pts, sim.num_pts))
-    positions = np.empty((0, 2))
-
     #Create new csv file
     csv_file = os.path.join(save_dir, base_name + '.csv')
     with open(csv_file, 'w') as f:

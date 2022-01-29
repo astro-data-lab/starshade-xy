@@ -6,7 +6,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
 
-model = 'Newest'
+model = 'Newest_orig'
 
 ext = ''
 

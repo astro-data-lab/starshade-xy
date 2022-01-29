@@ -83,7 +83,7 @@ class Noise_Maker(object):
         #Get calibration value
         if not self.is_test:
             cal_img = np.load(os.path.join(self.load_dir, 'calibration.npy'))
-            self.suppression_norm = cal_img[cal_img > 0].mean()
+            self.set_suppression_norm(cal_img)
 
 ############################################
 ############################################
@@ -166,7 +166,7 @@ class Noise_Maker(object):
                 img = self.add_noise_to_image(img, peak_cnts)
 
                 #Convert to suppression
-                img *= self.diff_peak / (self.count_rate * exp_time * self.suppression_norm)
+                img = self.convert_to_suppression(img, exp_time)
 
                 #Save
                 if self.do_save:
@@ -315,6 +315,20 @@ class Noise_Maker(object):
         snr = signal / noise / num_ap
 
         return snr
+
+############################################
+############################################
+
+############################################
+####    Suppresion ####
+############################################
+
+    def set_suppression_norm(self, cal_img):
+        self.suppression_norm = cal_img[cal_img > 0].mean()
+
+    def convert_to_suppression(self, img, exp_time):
+        img *= self.diff_peak / (self.count_rate * exp_time * self.suppression_norm)
+        return img
 
 ############################################
 ############################################

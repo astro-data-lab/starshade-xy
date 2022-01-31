@@ -23,8 +23,8 @@ train_grid_width_space = 3.4
 test_grid_width_space = 2.5
 
 #SNR range
-train_snr_range = [0.01, 5]
-test_snr_range = [0.1, 5]
+train_snr_range = [0.5, 100]
+test_snr_range = [2, 50]
 
 #Number of steps
 num_steps = {'testset':50, 'trainset':400}

@@ -90,7 +90,7 @@ noise = np.sqrt(signal + num_ap*(ccd_dark*texp + \
     ccd_read**2. + ccd_cic))
 
 #Compare SNR (mean per pixel)
-snr = signal / noise / fwhm
+snr = signal / noise / np.sqrt(num_ap)
 
 print(f'\nSNR: {snr:.2f}\n')
 

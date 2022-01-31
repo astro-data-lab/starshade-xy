@@ -41,9 +41,10 @@ class Noise_Maker(object):
             'target_SNR':       5,              #Target SNR of peak of diffraction pattern
             'multi_SNRs':       [],             #List of target SNR
             'diff_peak':        3.615e-3,       #Peak of diffraction pattern from simulation calculation
-            'count_rate':       7,            #Expected counts/s of peak of diffraction pattern
+            'count_rate':       7,              #Expected counts/s of peak of diffraction pattern
             'peak2mean':        0.68,           #Conversion from peak counts to mean counts in FWHM for J_0^2
             'fwhm':             28,             #Full-width at half-maximum of J_0^2
+            'mean2std':         5.54,           #Mean / std of J_0^2
             ### Detector ###
             'ccd_read':         4.78,           #Detector read noise [e-/pixel/frame]
             'ccd_gain':         0.768,          #Detector inverse-gain [e-/count]
@@ -199,7 +200,7 @@ class Noise_Maker(object):
             self.ccd_read**2. + self.ccd_cic))
 
         #Mean SNR
-        mean_snr = lambda s: s * self.ccd_gain / noise(s) / num_ap
+        mean_snr = lambda s: s * self.ccd_gain / noise(s) / np.sqrt(num_ap)
 
         #Solve for total counts that gives mean SNR closest to target SNR
         func = lambda s: np.abs(mean_snr(s) - target_SNR)
@@ -287,10 +288,10 @@ class Noise_Maker(object):
             calc_snr = self.check_snr(img, exp_time)
 
             #Assert is close (15%)
-            assert(abs(calc_snr - snr)/snr < 0.15)
+            assert(abs(calc_snr - snr)/snr < 0.1)
 
             #Plot
-            if [False, True][1]:
+            if [False, True][0]:
                 print(f'SNR: {calc_snr:.2f}, Target SNR: {self.target_SNR:.2f}, Exp Time: {exp_time:.2f} [s]')
 
                 import matplotlib.pyplot as plt; plt.ion()
@@ -303,16 +304,15 @@ class Noise_Maker(object):
         cen = np.array(np.unravel_index(np.argmax(img), img.shape))
         rr = np.hypot(*(np.indices(img.shape).T - cen).T)
 
-        #Get total signal in FWHM
-        signal = img[rr <= self.fwhm/2].sum() * self.ccd_gain
-        num_ap = np.pi*(self.fwhm/2)**2
+        #Get FWHM
+        in_spot = rr <= self.fwhm/2
+        num_ap = np.count_nonzero(in_spot)
 
-        #Get noise
+        #Get SNR from total signal and noise in FWHM
+        signal = img[in_spot].sum() * self.ccd_gain
         noise = np.sqrt(signal + num_ap*(self.ccd_dark*texp + \
             self.ccd_read**2. + self.ccd_cic))
-
-        #Compare SNR (mean per pixel)
-        snr = signal / noise / num_ap
+        snr = signal / noise / np.sqrt(num_ap)
 
         return snr
 

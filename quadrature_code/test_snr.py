@@ -14,7 +14,7 @@ import diffraq
 from noise_maker import Noise_Maker
 
 #SNRs to test
-snrs = np.concatenate((np.arange(0.05, 1, 0.125), [3,5]))
+snrs = np.concatenate((np.linspace(1, 25,9), [50, 75, 125]))
 
 #Image options
 apod_name = 'm12p8'
@@ -58,6 +58,7 @@ noise_params = {
         'is_test':              True,
         'count_rate':           7,
         'multi_SNRs':           snrs,
+        'seed':                 2083,
 }
 
 #Load instance of noise maker

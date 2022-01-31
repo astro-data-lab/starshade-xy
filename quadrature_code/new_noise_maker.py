@@ -110,7 +110,7 @@ class Noise_Maker(object):
             self.ccd_read**2. + self.ccd_cic))
 
         #Mean SNR
-        mean_snr = lambda s: s * self.ccd_gain / noise(s) / num_ap
+        mean_snr = lambda s: s * self.ccd_gain / noise(s) / np.sqrt(num_ap)
 
         #Solve for total counts that gives mean SNR closest to target SNR
         func = lambda s, target_SNR: np.abs(mean_snr(s) - target_SNR)

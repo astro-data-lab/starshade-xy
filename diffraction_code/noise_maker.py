@@ -39,7 +39,7 @@ class Noise_Maker(object):
             'peak2mean':        0.67,           #Conversion from peak counts to mean counts in FWHM for J_0^2
             'fwhm':             10,             #Full-width at half-maximum of J_0^2
             ### Detector ###
-            'ccd_read':         3.20,           #Detector read noise [e-/pixel/frame]
+            'ccd_read':         4.78,           #Detector read noise [e-/pixel/frame]
             'ccd_gain':         0.768,          #Detector inverse-gain [e-/count]
             'ccd_dark':         7e-4,           #Detector dark noise [e-/pixel/s]
             'ccd_cic':          0.0025,         #Detector CIC noise [e/pixel/frame]
@@ -136,7 +136,7 @@ class Noise_Maker(object):
             self.ccd_read**2. + self.ccd_cic))
 
         #Compare SNR (mean per pixel)
-        snr = signal / noise / num_ap
+        snr = signal / noise / fwhm
 
         print(f'SNR: {snr:.2f}, Target SNR: {self.target_SNR:.2f}')
 

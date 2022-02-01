@@ -137,7 +137,7 @@ class Imager(object):
 
     def load_pilot(self):
         #get tel rad for proper binning
-        trad = {1:1, 2:1.5, 4:3}[self.binning]
+        trad = {1:1, 2:1.5, 3:2., 4:3}[self.binning]
         pms = {'is_sim': self.is_sim, 'verbose': self.verbose, \
             'spc_tel_radius': trad}
         for k in self.params.keys():

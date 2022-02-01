@@ -76,12 +76,12 @@ for session in all_sessions:
 
     #Get noise
     ccd_dark = 7e-4
-    ccd_read = 3.20
+    ccd_read = 4.78
     ccd_cic = 0.0025
     noise = np.sqrt(signal + num_ap*(ccd_dark*exp_time + \
         ccd_read**2. + ccd_cic))
 
-    snr = signal/noise/num_ap
+    snr = signal/noise/np.sqrt(num_ap)
 
     print(f'\nExposure time: {exp_time:.1f} [s], SNR: {snr:.3f}, SNR 2: {snr2:.3f}\n')
 

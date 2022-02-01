@@ -215,7 +215,7 @@ class Simulator(object):
 
     def build_circle_quadrature(self):
         func = lambda t: self.circle_rad * np.ones_like(t)
-        self.xq, self.yq, self.wq = diffraq.polar_quad(func, 50, 50)
+        self.xq, self.yq, self.wq = diffraq.polar_quad(func, self.radial_nodes, self.theta_nodes)
 
 ############################################
 ############################################

@@ -69,7 +69,7 @@ else:
 
 #Detector params
 fwhm = 28
-ccd_read = 3.20
+ccd_read = 4.78
 ccd_bias = 500
 ccd_gain = 0.768
 ccd_dark = 7e-4
@@ -90,7 +90,7 @@ noise = np.sqrt(signal + num_ap*(ccd_dark*texp + \
     ccd_read**2. + ccd_cic))
 
 #Compare SNR (mean per pixel)
-snr = signal / noise / num_ap
+snr = signal / noise / np.sqrt(num_ap)
 
 print(f'\nSNR: {snr:.2f}\n')
 

@@ -77,7 +77,7 @@ noise = np.sqrt(total_sig*maker.ccd_gain + num_ap*(maker.ccd_dark*texps + \
     maker.ccd_read**2. + maker.ccd_cic))
 
 #Mean SNR
-mean_snr = total_sig * maker.ccd_gain / noise / num_ap
+mean_snr = total_sig * maker.ccd_gain / noise / np.sqrt(num_ap)
 
 #Get exposure time from best fit to mean SNR
 exp_time = texps[np.argmin(np.abs(mean_snr - target_SNR))]

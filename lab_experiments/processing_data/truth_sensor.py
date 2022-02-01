@@ -62,6 +62,12 @@ class Truth_Sensor(object):
         else:
             self.sense_func = self.sense_centroid
 
+        #Build round pupil mask
+        rr = np.hypot(*(np.indices(self.parent.img_shape) - self.parent.img_shape[0]/2))
+        self.pupil_mask = np.ones(self.parent.img_shape)
+        self.pupil_mask[rr > self.parent.physical_rad_px] = 0
+        self.mask_pts = self.pupil_mask.astype(bool).copy().flatten()
+
 ############################################
 ############################################
 
@@ -69,17 +75,22 @@ class Truth_Sensor(object):
 ####	Main Function ####
 ############################################
 
-    def get_position(self, img, exp_time, pos0, do_plot=False):
+    def get_position(self, img, exp_time, pos0=None, do_plot=False):
         #Get image error
         det_var = self.ccd_dark*exp_time + self.ccd_cic**2. + \
             self.ccd_read**2.
+
+        #Get position guess
+        if pos0 is None:
+            ind0 = np.argmax(img)
+            pos0 = np.array([self.xx[ind0], self.yy[ind0]])*self.pupil_mag
 
         #Take median image (if not already done)
         if img.ndim == 3:
             img = np.median(img, 0)
 
         #Get true position
-        tru, err, is_good = self.sense_func(img, det_var, pos0)
+        tru, err, is_good, amp = self.sense_func(img, det_var, pos0)
 
         #Debug
         if do_plot:
@@ -90,7 +101,7 @@ class Truth_Sensor(object):
             print('\n!Bad Truth Position!\n')
             breakpoint()
 
-        return tru
+        return tru, amp
 
 ############################################
 ############################################
@@ -100,7 +111,7 @@ class Truth_Sensor(object):
 ############################################
 
     def off_rad(self, off):
-        return np.sqrt((self.xx - off[0])**2. + (self.yy - off[1])**2.)
+        return np.sqrt((self.xx - off[0])**2. + (self.yy - off[1])**2.)[self.mask_pts]
 
     def errfunc(self, pp, yy, ee):
         """Model residual"""
@@ -122,8 +133,8 @@ class Truth_Sensor(object):
         rr[rr == 0.] = 1e-12
         dfda = j0(self.kRz*rr)**2. / ee
         dfdxy = pp[2]*2.*j0(self.kRz*rr)*j1(self.kRz*rr)*self.kRz / rr / ee
-        dfdx = (self.xx - pp[0])*dfdxy
-        dfdy = (self.yy - pp[1])*dfdxy
+        dfdx = (self.xx[self.mask_pts] - pp[0])*dfdxy
+        dfdy = (self.yy[self.mask_pts] - pp[1])*dfdxy
         jac = np.vstack((dfdx, dfdy, dfda)).T
         return jac
 
@@ -132,11 +143,14 @@ class Truth_Sensor(object):
         #Flatten image and add gain
         img = in_img.flatten() * self.ccd_gain
 
+        #Add mask
+        img = img[self.mask_pts]
+
         #Zero out negative values
         img[img < 0.] = 0.
 
         #Calculate noise
-        noise = np.sqrt(img + det_var)
+        noise = np.sqrt(img*0 + det_var)
 
         #Get initial guess (convert to pixels)
         off0 = off_guess / self.pupil_mag / self.binning
@@ -151,7 +165,7 @@ class Truth_Sensor(object):
 
         #Check for clean exit
         if not out.success:
-            return -1*np.ones(2), -1*np.ones(2), False
+            return -1*np.ones(2), -1*np.ones(2), False, -1
 
         #Get output Jacobian matrix
         out_jac = out.jac
@@ -174,11 +188,31 @@ class Truth_Sensor(object):
         pos = ans[:-1]
         err = np.sqrt(cov.diagonal()[:2])
 
+        #Amplitude
+        amp = ans[-1] / self.ccd_gain
+
+        if [False, True][0]:
+            #Reshape images
+            plt_img = in_img * self.ccd_gain * self.pupil_mask
+            plt_fit = self.fitfunc_no_mask(ans).reshape(in_img.shape) * self.pupil_mask
+
+            import matplotlib.pyplot as plt;plt.ion()
+            xind,yind = np.unravel_index(np.argmax(plt_img), plt_img.shape)
+
+            # plt.figure()
+            plt.cla()
+            plt.plot(plt_img[xind], 'b')
+            plt.plot(plt_fit[xind],'b--')
+            plt.plot(plt_img[:,yind],'r')
+            plt.plot(plt_fit[:,yind],'r--')
+
+            breakpoint()
+
         #Convert to physical units [m]
         pos *= self.pupil_mag
         err *= self.pupil_mag
 
-        return pos, err, True
+        return pos, err, True, amp
 
 ############################################
 ############################################
@@ -221,7 +255,7 @@ class Truth_Sensor(object):
         pos *= self.pupil_mag
         err *= self.pupil_mag
 
-        return pos, err, True
+        return pos, err, True, 1
 
     def get_threshold_inds(self, II):
         #Calculate noise threshold from max of image. Ignore all pixels below threshold

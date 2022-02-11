@@ -40,3 +40,54 @@ def get_image_radii(img_shp, cen=None):
     if cen is None:
         cen = [(img_shp[-2] - 1)/2, (img_shp[-1] - 1)/2]
     return np.hypot(xind - cen[0], yind - cen[1])
+
+##############################################
+###		Centroiding	###
+##############################################
+
+def centroid_image(img, noise_mult=5.):
+    """Calculate center of light"""
+    xTop, yTop, DN = 0., 0., 0.
+    #Calculate noise threshold from mean of edges. ignore all pixels below threshold
+    noiseThreshold = np.concatenate((img[0],img[-1],img[:,0],img[:,-1])).mean()*noise_mult
+    #lower threshold if not enough pixels are above threshold
+    cntr = 0
+    while img[img > noiseThreshold].size < len(img)/4.  and cntr < 20:
+        noiseThreshold *= 0.9
+        cntr += 1
+    #Centroid by Center of Light
+    for i in range(len(img)):
+        tt = (img[i][img[i] > noiseThreshold]-noiseThreshold).sum()
+        yTop += i*tt
+        DN += tt
+    for j in range(len(img[0])):
+        xTop += j*(img[:,j][img[:,j] > noiseThreshold]-noiseThreshold).sum()
+
+    #Normalize
+    if xTop != 0.:
+        xRet = xTop/DN
+    else:
+        xRet = len(img)/2.
+    if yTop != 0.:
+        yRet = yTop/DN
+    else:
+        yRet = len(img)/2.
+
+    return xRet, yRet
+
+def get_centroid_pos(image, cen, wid, noise_mult=5):
+    """Find the central location of a point source in the given image"""
+    #Crop image
+    newImg = crop_image(image, cen, wid)
+    #Centroid the sub image
+    cenx,ceny = centroid_image(newImg, noise_mult=noise_mult)
+    #Add offsets to convert from sub image coordinates to image coordinates
+    xcen = int(max(0, cen[0] - wid)) + cenx
+    ycen = int(max(0, cen[1] - wid)) + ceny
+    return xcen, ycen
+
+def get_max_index(image):
+    return np.unravel_index(np.argmax(image), image.shape)[::-1]
+
+##############################################
+##############################################

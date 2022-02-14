@@ -17,8 +17,8 @@ import image_util
 
 run = 'data_1s_bin1'
 # session = 'run__6_01_21'
-session = 'run__5_26_21'
-# session = 'run__8_30_21'
+# session = 'run__5_26_21'
+session = 'run__8_30_21'
 
 pos0 = [0,0]
 

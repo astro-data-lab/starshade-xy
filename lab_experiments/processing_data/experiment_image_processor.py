@@ -156,6 +156,16 @@ class Experiment_Image_Processor(object):
             #Get image
             img, exp = self.load_image(self.record[i][0])
 
+            #Handle missing file
+            if img is None:
+
+                imgs = np.concatenate((imgs, [np.ones(self.img_shape)*-1]))
+                amps = np.concatenate((amps, [-1]))
+                locs = np.concatenate((locs, [[-1,-1]]*self.num_kin))
+                #Store exposure time + backgrounds + number of frames
+                meta = np.concatenate((meta, [[-1,-1,-1]]*self.num_kin))
+                continue
+
             #Get excess regions
             nbk = 40//self.binning
             excess = np.concatenate((img[:,:nbk,:nbk], img[:,:nbk,-nbk:], \
@@ -222,7 +232,12 @@ class Experiment_Image_Processor(object):
         if mask_type != 'none':
             imgs = image_util.crop_image(imgs, None, self.num_pts//2+self.image_pad)
 
-        #Throw bad position solves
+        #Throw away bad position solves
+        bad_inds = amps == -1
+        imgs = imgs[~bad_inds]
+        amps = amps[~bad_inds]
+        locs = locs[~bad_inds]
+        meta = meta[~bad_inds]
 
         #Save Data
         if self.do_save:
@@ -230,7 +245,6 @@ class Experiment_Image_Processor(object):
             if mask_type == 'none':
                 self.save_truths()
 
-        breakpoint()
         #End
         tok = time.perf_counter()
         print(f'Time: {tok-tik:.1f} [s]\n')
@@ -251,6 +265,11 @@ class Experiment_Image_Processor(object):
 
     def load_image_h5(self, inum):
         fname = os.path.join(self.load_dir, 'Images', f'pupil__{str(int(inum)).zfill(5)}.h5')
+
+        #Check that file exists
+        if not os.path.exists(fname):
+            return None, None
+
         with h5py.File(fname) as f:
             data = f['image'][()]
             exp = f['exp_time'][()]

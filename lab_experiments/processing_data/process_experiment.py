@@ -13,19 +13,19 @@ import numpy as np
 from experiment_image_processor import Experiment_Image_Processor
 
 
-# session = 'run__6_01_21'
-# runs = ['data_1s_bin1', 'data_2s_bin1']
-# is_flyer = False
+session = 'run__6_01_21'
+runs = ['data_1s_bin1', 'data_2s_bin1']
+is_flyer = False
 
 # session = 'run__8_30_21'
 # runs = ['data_1s_bin1']
 # is_flyer = False
 
-session = 'CNN__12_20_21'
+# session = 'CNN__12_20_21'
 # session = 'CNN__12_21_21'
 # session = 'CNN__12_21_21_b'
-runs = ['t15_wide']
-is_flyer = True
+# runs = ['t15_wide']
+# is_flyer = True
 
 if is_flyer:
     data_dir = '/home/aharness/Research/Formation_Flying/Flyer_Results'
@@ -40,7 +40,7 @@ for run in runs:
         'data_dir':         data_dir,
         'session':          session,
         'run':              run,
-        'is_median':        True,
+        'is_median':        False,
         'save_dir':         'Processed_Images',
         'do_save':          True,
         'is_flyer_data':    is_flyer,

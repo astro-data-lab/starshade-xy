@@ -186,6 +186,7 @@ class Experiment_Image_Processor(object):
                 ncomb = 1
 
             #Get mask position for each frame
+            tmp_amp, tmp_pos = [], []
             for j in range(self.num_kin):
 
                 #Current frame index
@@ -205,6 +206,10 @@ class Experiment_Image_Processor(object):
                     pos = self.true_position[ij]
                     amp = self.true_amplitude[ij]
 
+                #Append
+                tmp_amp.append(amp)
+                tmp_pos.append(pos)
+
                 #Plot
                 if self.do_plot:
                     import matplotlib.pyplot as plt;plt.ion()
@@ -223,8 +228,8 @@ class Experiment_Image_Processor(object):
 
             #Store images + positions
             imgs = np.concatenate((imgs, img))
-            amps = np.concatenate((amps, [amp]))
-            locs = np.concatenate((locs, [pos]*img.shape[0]))
+            amps = np.concatenate((amps, tmp_amp))
+            locs = np.concatenate((locs, tmp_pos))
             #Store exposure time + backgrounds + number of frames
             meta = np.concatenate((meta, [[exp, back, ncomb]]*img.shape[0]))
 
@@ -233,11 +238,12 @@ class Experiment_Image_Processor(object):
             imgs = image_util.crop_image(imgs, None, self.num_pts//2+self.image_pad)
 
         #Throw away bad position solves
-        bad_inds = amps == -1
-        imgs = imgs[~bad_inds]
-        amps = amps[~bad_inds]
-        locs = locs[~bad_inds]
-        meta = meta[~bad_inds]
+        if self.is_flyer_data:
+            bad_inds = amps == -1
+            imgs = imgs[~bad_inds]
+            amps = amps[~bad_inds]
+            locs = locs[~bad_inds]
+            meta = meta[~bad_inds]
 
         #Save Data
         if self.do_save:
@@ -289,7 +295,7 @@ class Experiment_Image_Processor(object):
             with h5py.File(os.path.join(self.load_dir, f'results__{self.run}.h5'), 'r') as f:
                 true_pos = f['r_los_err_true'][:,1:]
             #flip and turn to meters
-            true_pos *= -1e3
+            true_pos *= np.array([-1,1])*1e3
             #get space2lab
             pms = json.load(open(os.path.join(self.load_dir, f'parameters__{self.run}.json'), 'r'))
             spc2lab = np.sqrt(17.7e-3/pms['ss_separation'])

@@ -77,7 +77,8 @@ if __name__ == "__main__":
     assert len(sys.argv) == 4, "usage: run_delfi.py <GMM model file> <CNN x> <CNN y>"
 
     # open GMM
-    gmm = pygmmis.GMM.from_file(sys.argv[1])
+    gmm = pygmmis.GMM()
+    gmm.load(sys.argv[1])
     # split into precomputable sub-mixtures
     gmm_theta, gmm_t, gmm_x = split_gmm(gmm)
 

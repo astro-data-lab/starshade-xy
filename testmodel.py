@@ -7,16 +7,18 @@ import os
 import torch
 import torch.nn.functional as F
 from torchvision import transforms
-from cnn import CNN
+from cnn_andrew import CNN
 import h5py
 import atexit
 import time
 
 do_save = [False, True][1]
 
-data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+# data_run = 'run__6_01_21__data_1s_bin1__spiders__median'
+# data_run = 'run__8_30_21__data_1s_bin1__spiders__median'
+data_run = 'CNN__12_21_21__t15_wide__spiders'
 
-model_name = 'Newest'
+model_name = 'Newest_andrew'
 
 save_ext = ''
 

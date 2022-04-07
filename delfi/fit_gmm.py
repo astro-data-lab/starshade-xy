@@ -15,7 +15,7 @@ if __name__ == "__main__":
     # run 5 GMMs and average them
     R = 5
     gmms = [ pygmmis.GMM(K=50, D=4) for _ in range(R) ]
-    for r in range(5):
+    for r in range(R):
         pygmmis.fit(gmms[r], data, init_method='minmax', w=1e-2, cutoff=5, split_n_merge=3)
     gmm = pygmmis.stack(gmms, np.ones(R))
 

@@ -33,7 +33,7 @@ class Noise_Maker(object):
             'diff_peak':        3.615e-3,       #Peak of diffraction pattern from simulation calculation
             'count_rate':       7,              #Expected counts/s of peak of diffraction pattern
             'peak2mean':        0.68,           #Conversion from peak counts to mean counts in FWHM for J_0^2
-            'fwhm':             28,             #Full-width at half-maximum of J_0^2
+            'num_tel_pts':      96,             #Number of pixels across pupil
             'snr_range':        [0.01,10],
             'n_snrs':           500,
             ### Detector ###
@@ -56,6 +56,9 @@ class Noise_Maker(object):
 
             #Set parameter value as attribute
             setattr(self, k, v)
+
+        #Fix FWHM (hardwired)
+        self.fwhm = 28 * (self.num_tel_pts/96)
 
         #Random number generator
         if self.rng is None:

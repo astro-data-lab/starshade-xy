@@ -70,7 +70,8 @@ for base_name in ['trainset', 'testset']:
         os.makedirs(save_dir)
 
     #Load instance of noise maker
-    noise_params = {'count_rate': 7, 'rng': rng, 'snr_range':snr_range}
+    noise_params = {'count_rate': 7, 'rng': rng, 'snr_range': snr_range,
+        'num_tel_pts': num_tel_pts}
     noiser = Noise_Maker(noise_params)
 
     #Lab width

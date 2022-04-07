@@ -72,7 +72,7 @@ class StarshadeDataset(Dataset):
         return sample
 
 class CNN(nn.Module):
-    def __init__(self):
+    def __init__(self, img_size):
         super(CNN, self).__init__()
         self.conv1 = nn.Conv2d(1, 8, 3, 1)
         self.conv2 = nn.Conv2d(8, 16, 3, 1)
@@ -171,7 +171,7 @@ def main():
     testloader = DataLoader(testset, batch_size=batch_size, shuffle=False)
 
     #Create model
-    model = CNN()
+    model = CNN(img_size)
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-2)
 
     #Build scheduler

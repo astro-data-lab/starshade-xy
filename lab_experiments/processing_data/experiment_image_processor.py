@@ -12,9 +12,10 @@ Description: Script to add spiders and secondary to experimental images.
 import numpy as np
 import os
 import h5py
+from astropy.io import fits
 import image_util
 import time
-import photo_functions as pfunc
+import json
 from scipy.ndimage import affine_transform
 from truth_sensor import Truth_Sensor
 
@@ -38,6 +39,7 @@ class Experiment_Image_Processor(object):
             'run':              '',
             'session':          '',
             'do_round_mask':    False,
+            'is_flyer_data':    False,
             ### Saving ###
             'do_save':          False,
             'do_plot':          False,
@@ -71,7 +73,12 @@ class Experiment_Image_Processor(object):
             setattr(self, k, v)
 
         #Directories
-        self.load_dir = os.path.join(self.data_dir, self.session, self.run)
+        if self.is_flyer_data:
+            self.load_dir = os.path.join(self.data_dir, self.session)
+            #Clear median flag
+            self.is_median = False
+        else:
+            self.load_dir = os.path.join(self.data_dir, self.session, self.run)
 
         #FIXED
         pupil_mag = 1.764
@@ -84,9 +91,13 @@ class Experiment_Image_Processor(object):
     def setup(self):
 
         #Get image shape
-        img, _, _ = pfunc.load_image(os.path.join(self.load_dir, 'image__0001.fits'))
-        self.num_kin = img.shape[0]
+        img, _ = self.load_image(1)
         self.img_shape = img.shape[1:]
+
+        if self.is_median:
+            self.num_kin = 1
+        else:
+            self.num_kin = img.shape[0]
 
         #Get binning
         self.binning = int(np.round(self.num_pixel_base/self.img_shape[0]))
@@ -105,10 +116,11 @@ class Experiment_Image_Processor(object):
     def run_script(self):
 
         #Load image record
-        self.record = np.genfromtxt(os.path.join(self.load_dir, 'record.csv'), delimiter=',')
+        self.load_record()
 
         #Prepare true position
-        self.num_imgs = len(self.record)
+        self.num_files = len(self.record)
+        self.num_imgs = self.num_files * self.num_kin
         self.true_position = np.empty((self.num_imgs,2))
         self.true_amplitude = np.zeros(self.num_imgs)
 
@@ -139,10 +151,20 @@ class Experiment_Image_Processor(object):
         amps = np.empty((0,))
         locs = np.empty((0, 2))
         meta = np.empty((0, 3))
-        for i in range(self.num_imgs):
+        for i in range(self.num_files):
 
             #Get image
-            img, exp = self.get_image(int(self.record[i][0]))
+            img, exp = self.load_image(self.record[i][0])
+
+            #Handle missing file
+            if img is None:
+
+                imgs = np.concatenate((imgs, [np.ones(self.img_shape)*-1]))
+                amps = np.concatenate((amps, [-1]))
+                locs = np.concatenate((locs, [[-1,-1]]*self.num_kin))
+                #Store exposure time + backgrounds + number of frames
+                meta = np.concatenate((meta, [[-1,-1,-1]]*self.num_kin))
+                continue
 
             #Get excess regions
             nbk = 40//self.binning
@@ -158,51 +180,70 @@ class Experiment_Image_Processor(object):
 
             #Take median
             if self.is_median:
-                nframe = img.shape[0]
                 img = np.array([np.median(img, 0)])
+                ncomb = img.shape[0]
             else:
-                nframe = 1
+                ncomb = 1
 
-            #Get current position
-            if mask_type == 'none':
-                #Position guess (flip x-sign b/c optics)
-                pos0 = self.record[i][1:] * np.array([-1, 1])
-                #Get true position
-                pos, amp = self.truth.get_position(img, exp, pos0=pos0)
-                #Save
-                self.true_position[i] = pos
-                self.true_amplitude[i] = amp
-            else:
-                #Get stored true position
-                pos = self.true_position[i]
-                amp = self.true_amplitude[i]
+            #Get mask position for each frame
+            tmp_amp, tmp_pos = [], []
+            for j in range(self.num_kin):
 
-            #Plot
-            if self.do_plot:
-                import matplotlib.pyplot as plt;plt.ion()
-                print(i, img.max()/amp)
-                img_extent = [self.truth.xx[0]*self.truth.pupil_mag, \
-                    self.truth.xx[-1]*self.truth.pupil_mag, \
-                    self.truth.yy[-1]*self.truth.pupil_mag, \
-                    self.truth.yy[0]*self.truth.pupil_mag]
+                #Current frame index
+                ij = i*self.num_kin + j
 
-                plt.cla()
-                plt.imshow(img[0], extent=img_extent)
-                plt.plot(0, 0, 'kx')
-                plt.plot(0, 0, 'k+')
-                plt.plot(pos[0], pos[1], 'ro')
-                breakpoint()
+                #Get current position
+                if mask_type == 'none':
+                    #Position guess (flip x-sign b/c optics)
+                    pos0 = self.record[i][1:] * np.array([-1, 1])
+                    #Get true position
+                    pos, amp = self.truth.get_position(img[j], exp, pos0=pos0)
+                    #Save
+                    self.true_position[ij] = pos
+                    self.true_amplitude[ij] = amp
+                else:
+                    #Get stored true position
+                    pos = self.true_position[ij]
+                    amp = self.true_amplitude[ij]
+
+                #Append
+                tmp_amp.append(amp)
+                tmp_pos.append(pos)
+
+                #Plot
+                if self.do_plot:
+                    import matplotlib.pyplot as plt;plt.ion()
+                    print(i, j, img[j].max()/amp)
+                    img_extent = [self.truth.xx[0]*self.truth.pupil_mag, \
+                        self.truth.xx[-1]*self.truth.pupil_mag, \
+                        self.truth.yy[-1]*self.truth.pupil_mag, \
+                        self.truth.yy[0]*self.truth.pupil_mag]
+
+                    plt.cla()
+                    plt.imshow(img[j], extent=img_extent)
+                    plt.plot(0, 0, 'kx')
+                    plt.plot(0, 0, 'k+')
+                    plt.plot(pos[0], pos[1], 'ro')
+                    breakpoint()
 
             #Store images + positions
             imgs = np.concatenate((imgs, img))
-            amps = np.concatenate((amps, [amp]))
-            locs = np.concatenate((locs, [pos]*img.shape[0]))
+            amps = np.concatenate((amps, tmp_amp))
+            locs = np.concatenate((locs, tmp_pos))
             #Store exposure time + backgrounds + number of frames
-            meta = np.concatenate((meta, [[exp, back, nframe]]*img.shape[0]))
+            meta = np.concatenate((meta, [[exp, back, ncomb]]*img.shape[0]))
 
         #Trim images
         if mask_type != 'none':
             imgs = image_util.crop_image(imgs, None, self.num_pts//2+self.image_pad)
+
+        #Throw away bad position solves
+        if self.is_flyer_data:
+            bad_inds = amps == -1
+            imgs = imgs[~bad_inds]
+            amps = amps[~bad_inds]
+            locs = locs[~bad_inds]
+            meta = meta[~bad_inds]
 
         #Save Data
         if self.do_save:
@@ -218,15 +259,56 @@ class Experiment_Image_Processor(object):
 ############################################
 
 ############################################
-####    Misc Functions ####
+####    Image Functions ####
 ############################################
 
-    def get_image(self, inum):
-        #Get data
-        fname = os.path.join(self.load_dir, f'image__{str(inum).zfill(4)}.fits')
-        img, exp = pfunc.get_image_data(fname)
+    def load_image_fits(self, inum):
+        fname = os.path.join(self.load_dir, f'image__{str(int(inum)).zfill(4)}.fits')
+        with fits.open(fname) as hdu:
+            data = hdu[0].data.astype(float)
+            exp = hdu[0].header['EXPOSURE']
+        return data, exp
 
-        return img, exp
+    def load_image_h5(self, inum):
+        fname = os.path.join(self.load_dir, 'Images', f'pupil__{str(int(inum)).zfill(5)}.h5')
+
+        #Check that file exists
+        if not os.path.exists(fname):
+            return None, None
+
+        with h5py.File(fname) as f:
+            data = f['image'][()]
+            exp = f['exp_time'][()]
+
+        if data.ndim == 2:
+            data = np.array([data])
+        return data, exp
+
+    def load_image(self, inum):
+        if self.is_flyer_data:
+            return self.load_image_h5(inum)
+        else:
+            return self.load_image_fits(inum)
+
+    def load_record(self):
+        if self.is_flyer_data:
+            with h5py.File(os.path.join(self.load_dir, f'results__{self.run}.h5'), 'r') as f:
+                true_pos = f['r_los_err_true'][:,1:]
+            #flip and turn to meters
+            true_pos *= np.array([-1,1])*1e3
+            #get space2lab
+            pms = json.load(open(os.path.join(self.load_dir, f'parameters__{self.run}.json'), 'r'))
+            spc2lab = np.sqrt(17.7e-3/pms['ss_separation'])
+            self.record = np.hstack((np.arange(len(true_pos))[:,None]+1, true_pos*spc2lab))
+        else:
+            self.record = np.genfromtxt(os.path.join(self.load_dir, 'record.csv'), delimiter=',')
+
+############################################
+############################################
+
+############################################
+####    Save / Load Functions ####
+############################################
 
     def save_data(self, mask_type, imgs, amps, locs, meta):
 

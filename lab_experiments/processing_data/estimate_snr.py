@@ -13,40 +13,20 @@ import numpy as np
 import matplotlib.pyplot as plt;plt.ion()
 import h5py
 from astropy.io import fits
+import image_util
 
 run = 'data_1s_bin1'
-session = 'run__6_01_21'
+# session = 'run__6_01_21'
+# session = 'run__5_26_21'
+session = 'run__8_30_21'
 
 pos0 = [0,0]
 
-is_med = True
-
-data_dir = './Arda_Results'
+is_med = [False, True][0]
 
 ############################################
 ####    Load Lab Data ####
 ############################################
-
-# #Load lab data
-# lab_name = f'{session}__{run}__none{["", "__median"][int(is_med)]}'
-# with h5py.File(f'{data_dir}/{lab_name}.h5', 'r') as f:
-#
-#     #get center
-#     cen0 = np.array(pos0) * f['tel_diameter']/2
-#
-#     #Positions
-#     tru_pos = f['positions'][()]
-#
-#     #Find image closest to specified point
-#     ind0 = np.argmin(np.hypot(*(tru_pos - cen0).T))
-#     pos = tru_pos[ind0]
-#
-#     #Get on-axis image
-#     img = f['images'][ind0]
-#
-#     #Extras
-#     texp = f['meta'][ind0][[0]]
-#     cal_val = f['cal_value'][()]
 
 data_dir = f'/home/aharness/Research/Frick_Lab/Data/FFNN/{session}/{run}'
 record = np.genfromtxt(f'{data_dir}/record.csv', delimiter=',')
@@ -59,9 +39,17 @@ with fits.open(f'{data_dir}/image__{str(inum).zfill(4)}.fits') as hdu:
     texp = hdu[0].header['EXPOSURE']
 
 if is_med:
+    nframe = img.shape[0]
     img = np.median(img, 0)
 else:
+    nframe = 1
     img = img[0]
+
+#Subtract background
+back = np.median(np.concatenate((img[:10].flatten(), img[-10:].flatten(),
+    img[:,:10].flatten(), img[:,-10:].flatten())))
+
+img -= back
 
 ############################################
 ####    Get SNR ####
@@ -70,29 +58,36 @@ else:
 #Detector params
 fwhm = 28
 ccd_read = 4.78
-ccd_bias = 500
 ccd_gain = 0.768
 ccd_dark = 7e-4
 ccd_cic = 0.0025
 
 #Center on peak
 cen = np.unravel_index(np.argmax(img), img.shape)
+cen = image_util.get_centroid_pos(img, cen[::-1], 2*fwhm)[::-1]
 
 #Get radius of image around peak
 rr = np.hypot(*(np.indices(img.shape).T - cen).T)
 
 #Get total signal in FWHM
-signal = (img[rr <= fwhm/2] - ccd_bias).sum() * ccd_gain
-num_ap = img[rr <= fwhm/2].size
+in_spot = rr <= fwhm/2
+signal = img[in_spot].sum() * ccd_gain
+num_ap = np.count_nonzero(in_spot)
 
 #Get noise
-noise = np.sqrt(signal + num_ap*(ccd_dark*texp + \
-    ccd_read**2. + ccd_cic))
+noise = np.sqrt(signal + num_ap*(ccd_dark*texp + ccd_read**2. + ccd_cic))
 
 #Compare SNR (mean per pixel)
 snr = signal / noise / np.sqrt(num_ap)
 
 print(f'\nSNR: {snr:.2f}\n')
+
+noise2 = img[in_spot].std()*ccd_gain * np.sqrt(num_ap)
+# noise2 = np.sqrt(noise2**2 - (img[in_spot].mean()*ccd_gain/5.5)**2)
+
+snr2 = signal / noise2 / np.sqrt(num_ap)
+print(f'\nSNR2: {snr2:.2f}\n')
+
 
 plt.imshow(img)
 breakpoint()

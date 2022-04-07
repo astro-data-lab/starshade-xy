@@ -96,10 +96,10 @@ class Truth_Sensor(object):
         if do_plot:
             self.show_plot(img, pos0, tru)
 
-        #Check flag
-        if not is_good:
-            print('\n!Bad Truth Position!\n')
-            breakpoint()
+        # #Check flag
+        # if not is_good:
+        #     print('\n!Bad Truth Position!\n')
+        #     breakpoint()
 
         return tru, amp
 

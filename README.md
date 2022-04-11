@@ -1,27 +1,49 @@
-# Offset estimation for Starshade Formation Flying
+# Position Sensing for Starshade Formation Flying
 
-Starshade + Roman Space Telescope coordinated flight needs to be better than 1m precision in lateral diredction, with the only way of assessing good co-location being the image of the obscured pupil as observed from Roman.
+_for details see the [paper](https://arxiv.org/abs/2204.03853)_
 
-The current estimation procedure by JPL uses a large precomputed template library to match the offsets.
-This is memory-intensive and probably requires tree-based search for the nearest template to the given observation.
-Anthony's approach is to use a non-linear fitter, which is potentially too CPU-intensive for a flight computer.
-So, can we find a ML approach that does the job more economically?
+A starshade need to be aligned with its telescopes, e.g. the Roman Space Telescope.
+The only way of assessing good alignment comes from the image of the obscured pupil as observed from Roman.
+The occluded image shows in its center the spot of Arago, whose position is thus an estimate for any lateral offset.
 
-The patterns is pseudo-linear in the offsets in the inner region, but gets more complication further away.
-The transition region is currently not well modeled at all.
-The pattern is very smooth (complex shape seen from a large distance with an almost perfectly collimated beam) and can be simulated well.
-It is also dependent on the star observed (because of the chromaticity of the diffraction pattern).
-A simple CNN should could do: `Image -> CNN -> (dx, dy, t)`, where `t` is the spectral type of the stars
+Current estimation procedures either use a large precomputed template library to match the offsets, or a non-linear model fitting code. So, we design a simple CNN to perform the task `Image -> (dx', dy')`. To further calibrate the model and provide uncertainties, we use a simulation-based inference technique DELFI, which performs the task `(dx', dy') -> (dx'', dy'', Sigma)`, where `Sigma` is the 2x2 covariance matrix of the calibrated positions `(dx'', dy'')`.
 
-The chromatic effects are limited because of the narrow wavelength range use used for control. 
-So, `Image -> CNN -> (dx,dy)` should suffice. 
-One caveat is SNR of the star might differ (in the narrow band), so training should include SNR variations.
-Also, because the actual image in flight (or on the testbed) might be subtly different (in terms of noise or the exact pattern) from the simulations, we should predict a quality flag or uncertainty estimate,either directly from as CNN output, or in the form of a Bayesian CNN.
+## Instructions for Running the Code
 
-So, the proposed architectures is `Image -> CNN -> (dx, dy, sigma)` for some quality/uncertainty metric `sigma`
+### Experimental Data
 
-## Project outline
+To process experimental data (add spiders to image and get true positions):
 
-1. Train and validate on simulated images (code from Anthony)
-2. Test on testbed images (includes air disturbances), will show how robust estimation is
-3. If 2. is successful, run (dx,dy) in closed-loop control system on testbed
+1. Run script `lab_experiments/processing_data/process_experiment.py`
+    - Make sure `data_dir`, `session`, `run` are pointed to the location of the data for a given experiment run.
+
+    - Toggle `is_median` parameter to choose to take median of multiple exposure images at each position.
+
+### Simulated Data
+
+To generate simulated images for training:
+
+1. Run script `quadrature_code/generate_images.py` to solve diffraction equation
+    - Select `width` and `num_steps`.
+
+
+2. Run script `quadrature_code/add_noise.py` to add noise to images
+    - Provide list of SNRs to train over with parameter `multi_SNRs`.
+
+### Training CNN
+
+To train, test, and plot results of CNN:
+
+1. Run script `cnn.py` to train on simulated data.
+
+2. Run script `testmodel.py` to test CNN on experimental data.
+
+3. Run script `plot_results.py` to plot map and histogram of errors.
+
+### Training DELFI
+
+1. Run script `delfi/build_gauss_testset.py` to create a training with a Gaussian distribution in `(dx, dy)`
+
+2. Run script `delfi/fit_gmm.py` (requires [pyGMMis](https://github.com/pmelchior/pygmmis))
+
+3. Run script `delfi/run_delfi.py` for position and uncertainty estimates
